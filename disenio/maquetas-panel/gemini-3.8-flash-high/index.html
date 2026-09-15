@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TechServ — Bandeja de Órdenes y Asignación de Técnico</title>
+  <style>
+    /* Reset & tokens de diseño */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border-color: #e2e8f0;
+      --border-subtle: #f1f5f9;
+      --text-main: #0f172a;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --action-blue: #1d4ed8;
+      --action-blue-hover: #1e40af;
+      --action-blue-subtle: #eff6ff;
+
+      /* Puntos y colores de estado */
+      --status-pending: #d97706;
+      --status-pending-bg: #fffbeb;
+      --status-pending-border: #fde68a;
+
+      --status-assigned: #1d4ed8;
+      --status-assigned-bg: #eff6ff;
+      --status-assigned-border: #bfdbfe;
+
+      --status-en-route: #7c3aed;
+      --status-en-route-bg: #f5f3ff;
+      --status-en-route-border: #ddd6fe;
+
+      --status-completed: #059669;
+      --status-completed-bg: #ecfdf5;
+      --status-completed-border: #a7f3d0;
+
+      --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+    }
+
+    body {
+      font-family: var(--font-system);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.4;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Accesibilidad: Foco visible sin ser intrusivo */
+    :focus-visible {
+      outline: 2px solid var(--action-blue);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* Iconos SVG inline */
+    .icon {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      stroke-width: 2;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+      vertical-align: middle;
+    }
+
+    .icon-sm {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Barra Superior */
+    .topbar {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      height: 52px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .topbar-inner {
+      max-width: 1560px;
+      margin: 0 auto;
+      height: 100%;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-main);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .brand-mark {
+      width: 26px;
+      height: 26px;
+      background-color: var(--action-blue);
+      color: #ffffff;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .main-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .nav-item:hover {
+      color: var(--text-main);
+      background-color: #f1f5f9;
+    }
+
+    .nav-item.is-active {
+      color: var(--action-blue);
+      font-weight: 600;
+      background-color: var(--action-blue-subtle);
+    }
+
+    .nav-dot-separator {
+      color: var(--border-color);
+      user-select: none;
+      font-size: 11px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .business-identity {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .business-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    .business-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-md);
+      background-color: #e0e7ff;
+      color: var(--action-blue);
+      border: 1px solid #c7d2fe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Menú para cerrar sesión */
+    .user-menu {
+      position: relative;
+    }
+
+    .user-menu-summary {
+      list-style: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 9px;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .user-menu-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .user-menu-summary:hover {
+      background-color: #f8fafc;
+      color: var(--text-main);
+    }
+
+    .user-dropdown-panel {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 5px);
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      min-width: 150px;
+      padding: 4px;
+      z-index: 50;
+    }
+
+    .dropdown-btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      width: 100%;
+      padding: 7px 9px;
+      font-family: inherit;
+      font-size: 12px;
+      color: #b91c1c;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dropdown-btn:hover {
+      background-color: #fef2f2;
+    }
+
+    /* Contenedor Principal */
+    .app-main {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cuatro Indicadores arriba en una fila */
+    .indicators-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .indicator-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .indicator-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .indicator-label-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-pending { background-color: var(--status-pending); }
+    .dot-assigned { background-color: var(--status-assigned); }
+    .dot-en-route { background-color: var(--status-en-route); }
+    .dot-completed { background-color: var(--status-completed); }
+
+    .indicator-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .indicator-number {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+
+    /* Filtros de la bandeja */
+    .tray-filters {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background-color: #f1f5f9;
+      padding: 2.5px;
+      border-radius: var(--radius-md);
+    }
+
+    .tab-item {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tab-item:hover {
+      color: var(--text-main);
+    }
+
+    .tab-item.is-active-tab {
+      background-color: #ffffff;
+      color: var(--action-blue);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .filter-inputs-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      justify-content: flex-end;
+      min-width: 320px;
+    }
+
+    .search-container {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+
+    .search-icon-inside {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-field {
+      width: 100%;
+      height: 32px;
+      padding: 5px 10px 5px 30px;
+      font-family: inherit;
+      font-size: 12.5px;
+      color: var(--text-main);
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+    }
+
+    .search-field::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-field:focus {
+      border-color: var(--action-blue);
+    }
+
+    .specialty-dropdown {
+      height: 32px;
+      padding: 5px 28px 5px 9px;
+      font-family: inherit;
+      font-size: 12.5px;
+      color: var(--text-main);
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+
+    .specialty-dropdown:focus {
+      border-color: var(--action-blue);
+    }
+
+    /* Disposición de la Bandeja: Lista Vertical + Panel Lateral Abierto */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(420px, 470px);
+      gap: 14px;
+      align-items: start;
+    }
+
+    /* Columna de la Bandeja */
+    .orders-tray-column {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .tray-heading-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px;
+    }
+
+    .tray-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .tray-count-indicator {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Lista vertical de tarjetas de órdenes */
+    .orders-vertical-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      list-style: none;
+    }
+
+    /* Tarjeta individual */
+    .order-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 13px 15px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .order-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .order-card.is-active-order {
+      border-color: var(--action-blue);
+      box-shadow: 0 0 0 1px var(--action-blue), var(--shadow-sm);
+      background-color: #ffffff;
+    }
+
+    .order-header-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .order-header-tags {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .order-code-badge {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      background-color: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      letter-spacing: -0.01em;
+    }
+
+    .specialty-pill {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      background-color: #f8fafc;
+      border: 1px solid var(--border-color);
+      padding: 1.5px 6px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+
+    .order-time-stamp {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    /* Badges de Estado con Punto + Texto */
+    .badge-state {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      font-size: 11.5px;
+      font-weight: 600;
+      line-height: 1.2;
+      border: 1px solid transparent;
+    }
+
+    .badge-state .state-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .badge-pending {
+      background-color: var(--status-pending-bg);
+      color: #92400e;
+      border-color: var(--status-pending-border);
+    }
+    .badge-pending .state-dot {
+      background-color: var(--status-pending);
+    }
+
+    .badge-assigned {
+      background-color: var(--status-assigned-bg);
+      color: #1e40af;
+      border-color: var(--status-assigned-border);
+    }
+    .badge-assigned .state-dot {
+      background-color: var(--status-assigned);
+    }
+
+    .badge-en-route {
+      background-color: var(--status-en-route-bg);
+      color: #5b21b6;
+      border-color: var(--status-en-route-border);
+    }
+    .badge-en-route .state-dot {
+      background-color: var(--status-en-route);
+    }
+
+    .badge-completed {
+      background-color: var(--status-completed-bg);
+      color: #065f46;
+      border-color: var(--status-completed-border);
+    }
+    .badge-completed .state-dot {
+      background-color: var(--status-completed);
+    }
+
+    /* Descripción de falla */
+    .fault-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.35;
+    }
+
+    .order-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 12px;
+      font-size: 12px;
+    }
+
+    .meta-field {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .meta-field-strong {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .order-action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+      gap: 8px;
+    }
+
+    .action-bar-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .waiting-chip {
+      color: #92400e;
+      background-color: #fffbeb;
+      border: 1px solid #fef3c7;
+      padding: 1px 5px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      color: #b45309;
+      font-weight: 600;
+      font-size: 11.5px;
+    }
+
+    /* Botones */
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      padding: 6px 13px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      line-height: 1.25;
+    }
+
+    .btn-action-primary {
+      background-color: var(--action-blue);
+      color: #ffffff;
+      border-color: var(--action-blue);
+    }
+
+    .btn-action-primary:hover {
+      background-color: var(--action-blue-hover);
+      border-color: var(--action-blue-hover);
+    }
+
+    .btn-action-secondary {
+      background-color: #ffffff;
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+
+    .btn-action-secondary:hover {
+      background-color: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    .btn-full-width {
+      width: 100%;
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+
+    .btn-action-sm {
+      padding: 4px 8px;
+      font-size: 11.5px;
+    }
+
+    /* Panel Lateral Derecho: Asignación Abierto para ORD-0142 */
+    .side-assignment-panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 66px;
+      max-height: calc(100vh - 80px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-top-header {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .panel-title-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .panel-heading-text {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .panel-dismiss-btn {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      padding: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .panel-dismiss-btn:hover {
+      background-color: #e2e8f0;
+      color: var(--text-main);
+    }
+
+    .panel-scrollable-body {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Resumen de la orden en el panel */
+    .panel-card-brief {
+      background-color: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .panel-card-brief-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-full-fault-box {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+
+    .panel-micro-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+
+    .panel-fault-quote {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.35;
+    }
+
+    /* 3 Fotos como Miniaturas */
+    .thumbnails-block {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .thumbnails-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .thumbnails-caption-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .thumbnails-layout-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .thumb-item-btn {
+      background-color: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+      padding: 0;
+      font-family: inherit;
+    }
+
+    .thumb-item-btn:hover {
+      border-color: var(--action-blue);
+    }
+
+    .thumb-canvas-box {
+      width: 100%;
+      height: 60px;
+      background-color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .thumb-svg-graphic {
+      width: 100%;
+      height: 100%;
+    }
+
+    .thumb-expand-icon {
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      background-color: rgba(15, 23, 42, 0.7);
+      color: #ffffff;
+      border-radius: 3px;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+    }
+
+    .thumb-text-legend {
+      padding: 4px 6px;
+      font-size: 10.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background-color: #ffffff;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Dirección y botón "Ver en el mapa" */
+    .address-location-card {
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .address-left-info {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .address-map-icon {
+      color: var(--action-blue);
+      margin-top: 2px;
+    }
+
+    .address-texts {
+      min-width: 0;
+    }
+
+    .address-subheading {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .address-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    /* Lista de Técnicos para Elegir */
+    .tech-picker-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tech-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tech-picker-heading {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .technicians-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .technician-option-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 9px 11px;
+      background-color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+    }
+
+    .technician-option-card:hover {
+      border-color: #cbd5e1;
+      background-color: #f8fafc;
+    }
+
+    .technician-option-card.is-chosen-technician {
+      border-color: var(--action-blue);
+      background-color: #eff6ff;
+      box-shadow: 0 0 0 1px var(--action-blue);
+    }
+
+    .tech-radio-control {
+      margin-top: 2px;
+      accent-color: var(--action-blue);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .tech-details-pane {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .tech-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .tech-full-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .tech-availability-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1.5px 6px;
+      border-radius: 9999px;
+      line-height: 1.2;
+    }
+
+    .avail-ready {
+      background-color: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .avail-ready .state-dot {
+      background-color: #059669;
+    }
+
+    .avail-busy {
+      background-color: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .avail-busy .state-dot {
+      background-color: #d97706;
+    }
+
+    .tech-specialties-line {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .tech-orders-today {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Pie del Panel de Asignación */
+    .panel-bottom-dock {
+      padding: 11px 14px;
+      border-top: 1px solid var(--border-color);
+      background-color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .assignment-status-banner {
+      padding: 7px 9px;
+      background-color: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: var(--radius-md);
+      color: #065f46;
+      font-size: 12px;
+      font-weight: 500;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .assignment-status-banner.is-shown {
+      display: flex;
+    }
+
+    /* Diálogos Modales Accesibles */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .dialog-overlay.is-open {
+      display: flex;
+    }
+
+    .dialog-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      max-width: 580px;
+      width: 100%;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dialog-top {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #f8fafc;
+    }
+
+    .dialog-heading {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .dialog-content {
+      padding: 14px;
+      overflow-y: auto;
+      max-height: 75vh;
+    }
+
+    .dialog-bottom-bar {
+      padding: 9px 14px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      background-color: #f8fafc;
+    }
+
+    .empty-state-card {
+      padding: 36px 16px;
+      text-align: center;
+      background-color: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 1080px) {
+      .workspace-grid {
+        grid-template-columns: 1fr;
+      }
+      .side-assignment-panel {
+        position: static;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .topbar {
+        height: auto;
+        padding: 8px 0;
+      }
+      .topbar-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .topbar-left, .topbar-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .indicators-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .tray-filters {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .filter-inputs-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .search-container {
+        max-width: 100%;
+      }
+      .order-meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra superior -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        <a href="#" class="brand-title" aria-label="TechServ inicio">
+          <span class="brand-mark" aria-hidden="true">TS</span>
+          <span>TechServ</span>
+        </a>
+        <nav class="main-nav" aria-label="Navegación del taller">
+          <a href="#" class="nav-item is-active" aria-current="page">Órdenes</a>
+          <span class="nav-dot-separator" aria-hidden="true">·</span>
+          <a href="#" class="nav-item">Técnicos</a>
+          <span class="nav-dot-separator" aria-hidden="true">·</span>
+          <a href="#" class="nav-item">Repuestos</a>
+          <span class="nav-dot-separator" aria-hidden="true">·</span>
+          <a href="#" class="nav-item">Reportes</a>
+        </nav>
+      </div>
+
+      <div class="topbar-right">
+        <div class="business-identity">
+          <span class="business-name">Servicios Delgado E.I.R.L.</span>
+          <div class="business-avatar" aria-hidden="true">SD</div>
+        </div>
+
+        <details class="user-menu">
+          <summary class="user-menu-summary" aria-label="Menú de usuario">
+            <span>Cuenta</span>
+            <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+          <div class="user-dropdown-panel" role="menu">
+            <button type="button" class="dropdown-btn" role="menuitem" onclick="alert('Sesión cerrada correctamente.')">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenido principal -->
+  <main class="app-main">
+
+    <!-- Cuatro indicadores arriba, en una fila -->
+    <section class="indicators-row" aria-label="Indicadores del día">
+      <div class="indicator-card" onclick="filterByStateTab('Pendientes')" tabindex="0" role="button" aria-label="Ver órdenes pendientes: 6">
+        <div class="indicator-label-wrap">
+          <span class="status-dot dot-pending" aria-hidden="true"></span>
+          <span class="indicator-title">Pendientes</span>
+        </div>
+        <span class="indicator-number">6</span>
+      </div>
+
+      <div class="indicator-card" onclick="filterByStateTab('Asignadas')" tabindex="0" role="button" aria-label="Ver órdenes asignadas: 3">
+        <div class="indicator-label-wrap">
+          <span class="status-dot dot-assigned" aria-hidden="true"></span>
+          <span class="indicator-title">Asignadas</span>
+        </div>
+        <span class="indicator-number">3</span>
+      </div>
+
+      <div class="indicator-card" onclick="filterByStateTab('En camino')" tabindex="0" role="button" aria-label="Ver órdenes en camino: 2">
+        <div class="indicator-label-wrap">
+          <span class="status-dot dot-en-route" aria-hidden="true"></span>
+          <span class="indicator-title">En camino</span>
+        </div>
+        <span class="indicator-number">2</span>
+      </div>
+
+      <div class="indicator-card" onclick="filterByStateTab('Completadas')" tabindex="0" role="button" aria-label="Ver órdenes completadas hoy: 11">
+        <div class="indicator-label-wrap">
+          <span class="status-dot dot-completed" aria-hidden="true"></span>
+          <span class="indicator-title">Completadas hoy</span>
+        </div>
+        <span class="indicator-number">11</span>
+      </div>
+    </section>
+
+    <!-- Filtros de la bandeja -->
+    <section class="tray-filters" aria-label="Filtros de la bandeja de órdenes">
+      <div class="filter-tabs-group" role="tablist" aria-label="Filtrar por estado">
+        <button type="button" class="tab-item is-active-tab" role="tab" aria-selected="true" data-tab-name="Todas" onclick="filterByStateTab('Todas')">
+          Todas
+        </button>
+        <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab-name="Pendientes" onclick="filterByStateTab('Pendientes')">
+          Pendientes
+        </button>
+        <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab-name="Asignadas" onclick="filterByStateTab('Asignadas')">
+          Asignadas
+        </button>
+        <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab-name="En camino" onclick="filterByStateTab('En camino')">
+          En camino
+        </button>
+        <button type="button" class="tab-item" role="tab" aria-selected="false" data-tab-name="Completadas" onclick="filterByStateTab('Completadas')">
+          Completadas
+        </button>
+      </div>
+
+      <div class="filter-inputs-group">
+        <div class="search-container">
+          <svg class="icon icon-sm search-icon-inside" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="search"
+                 id="inputBuscador"
+                 class="search-field"
+                 placeholder="Buscar por código, cliente o distrito"
+                 aria-label="Buscar por código, cliente o distrito"
+                 oninput="onSearchTextChange(this.value)">
+        </div>
+
+        <select id="selectEspecialidad" class="specialty-dropdown" aria-label="Filtrar por especialidad" onchange="onSpecialtyChange(this.value)">
+          <option value="todas">Todas las especialidades</option>
+          <option value="Reparación de Electrodomésticos">Reparación de Electrodomésticos</option>
+          <option value="Soporte Técnico e Informático">Soporte Técnico e Informático</option>
+          <option value="Servicios del Hogar">Servicios del Hogar</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Disposición de Trabajo: Bandeja vertical + Panel lateral abierto -->
+    <div class="workspace-grid">
+
+      <!-- Columna izquierda: La bandeja de órdenes (lista vertical de tarjetas) -->
+      <section class="orders-tray-column" aria-label="Bandeja de órdenes">
+        <div class="tray-heading-row">
+          <h1 class="tray-title">Bandeja de órdenes</h1>
+          <span id="counterBadge" class="tray-count-indicator">5 órdenes</span>
+        </div>
+
+        <div id="trayEmptyAlert" class="empty-state-card" role="status">
+          No hay órdenes que coincidan con los filtros seleccionados.
+        </div>
+
+        <ul class="orders-vertical-list" id="ordersList">
+
+          <!-- 1. ORD-0142 (Abierta en el panel lateral) -->
+          <li class="order-card is-active-order" id="order-ORD-0142" data-order-status="Pendiente" data-order-specialty="Reparación de Electrodomésticos" data-search-text="ORD-0142 Rosa Chávez Urb. Primavera Trujillo lavadora centrifuga agua">
+            <div class="order-header-line">
+              <div class="order-header-tags">
+                <span class="order-code-badge">ORD-0142</span>
+                <span class="badge-state badge-pending">
+                  <span class="state-dot" aria-hidden="true"></span>
+                  Pendiente
+                </span>
+                <span class="specialty-pill">Reparación de Electrodomésticos</span>
+              </div>
+              <div class="order-time-stamp">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Hoy 14:30</span>
+              </div>
+            </div>
+
+            <div class="fault-text">
+              "La lavadora no centrifuga y bota agua por abajo"
+            </div>
+
+            <div class="order-meta-grid">
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Cliente: <strong class="meta-field-strong">Rosa Chávez</strong></span>
+              </div>
+
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Urb. Primavera, Mz. C Lt. 14, Trujillo</span>
+              </div>
+            </div>
+
+            <div class="order-action-bar">
+              <div class="action-bar-info">
+                <span class="meta-field">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  3 fotos adjuntas
+                </span>
+              </div>
+
+              <button type="button" class="btn-action btn-action-primary" onclick="selectOrder('ORD-0142')" aria-label="Asignar técnico para la orden ORD-0142">
+                Asignar técnico
+              </button>
+            </div>
+          </li>
+
+          <!-- 2. ORD-0141 -->
+          <li class="order-card" id="order-ORD-0141" data-order-status="Pendiente" data-order-specialty="Soporte Técnico e Informático" data-search-text="ORD-0141 Miguel Aranda Av. América Sur Trujillo laptop no enciende huele quemado">
+            <div class="order-header-line">
+              <div class="order-header-tags">
+                <span class="order-code-badge">ORD-0141</span>
+                <span class="badge-state badge-pending">
+                  <span class="state-dot" aria-hidden="true"></span>
+                  Pendiente
+                </span>
+                <span class="specialty-pill">Soporte Técnico e Informático</span>
+              </div>
+              <div class="order-time-stamp">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Hoy 16:00</span>
+              </div>
+            </div>
+
+            <div class="fault-text">
+              "No enciende la laptop, huele a quemado"
+            </div>
+
+            <div class="order-meta-grid">
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Cliente: <strong class="meta-field-strong">Miguel Aranda</strong></span>
+              </div>
+
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Av. América Sur 3145, Trujillo</span>
+              </div>
+            </div>
+
+            <div class="order-action-bar">
+              <div class="action-bar-info">
+                <span class="meta-field">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  1 foto adjunta
+                </span>
+              </div>
+
+              <button type="button" class="btn-action btn-action-primary" onclick="selectOrder('ORD-0141')" aria-label="Asignar técnico para la orden ORD-0141">
+                Asignar técnico
+              </button>
+            </div>
+          </li>
+
+          <!-- 3. ORD-0139 -->
+          <li class="order-card" id="order-ORD-0139" data-order-status="Asignada" data-order-specialty="Servicios del Hogar" data-search-text="ORD-0139 Elena Rodríguez Urb. San Andrés Trujillo tablero electrico corto ducha Luis Ramírez">
+            <div class="order-header-line">
+              <div class="order-header-tags">
+                <span class="order-code-badge">ORD-0139</span>
+                <span class="badge-state badge-assigned">
+                  <span class="state-dot" aria-hidden="true"></span>
+                  Asignada
+                </span>
+                <span class="specialty-pill">Servicios del Hogar</span>
+              </div>
+              <div class="order-time-stamp">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>Mañana 09:00</span>
+              </div>
+            </div>
+
+            <div class="fault-text">
+              "Tablero eléctrico hace corto al conectar la ducha"
+            </div>
+
+            <div class="order-meta-grid">
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Cliente: <strong class="meta-field-strong">Elena Rodríguez</strong></span>
+              </div>
+
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Urb. San Andrés, Etapa 3, Trujillo</span>
+              </div>
+            </div>
+
+            <div class="order-action-bar">
+              <div class="action-bar-info">
+                <span class="meta-field">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                  </svg>
+                  Técnico asignado: <strong class="meta-field-strong">Luis Ramírez</strong>
+                </span>
+                <span class="waiting-chip">Esperando confirmación</span>
+              </div>
+
+              <button type="button" class="btn-action btn-action-secondary" onclick="selectOrder('ORD-0139')" aria-label="Ver detalle de la orden ORD-0139">
+                Ver detalle
+              </button>
+            </div>
+          </li>
+
+          <!-- 4. ORD-0138 -->
+          <li class="order-card" id="order-ORD-0138" data-order-status="En camino" data-order-specialty="Servicios del Hogar" data-search-text="ORD-0138 Farmacia Bolívar Jr. Bolívar Trujillo aire acondicionado no enfria gotea Ana Quispe">
+            <div class="order-header-line">
+              <div class="order-header-tags">
+                <span class="order-code-badge">ORD-0138</span>
+                <span class="badge-state badge-en-route">
+                  <span class="state-dot" aria-hidden="true"></span>
+                  En camino
+                </span>
+                <span class="specialty-pill">Servicios del Hogar</span>
+              </div>
+              <div class="order-time-stamp">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Hoy 11:00</span>
+              </div>
+            </div>
+
+            <div class="fault-text">
+              "Aire acondicionado no enfría, gotea adentro"
+            </div>
+
+            <div class="order-meta-grid">
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Cliente: <strong class="meta-field-strong">Farmacia Bolívar</strong></span>
+              </div>
+
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Jr. Bolívar 460, Trujillo</span>
+              </div>
+            </div>
+
+            <div class="order-action-bar">
+              <div class="action-bar-info">
+                <span class="meta-field">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                  </svg>
+                  Técnico: <strong class="meta-field-strong">Ana Quispe</strong>
+                </span>
+              </div>
+
+              <button type="button" class="btn-action btn-action-secondary" onclick="selectOrder('ORD-0138')" aria-label="Ver detalle de la orden ORD-0138">
+                Ver detalle
+              </button>
+            </div>
+          </li>
+
+          <!-- 5. ORD-0135 -->
+          <li class="order-card" id="order-ORD-0135" data-order-status="Completada" data-order-specialty="Reparación de Electrodomésticos" data-search-text="ORD-0135 Javier Osorio Urb. El Golf Trujillo cambio rodaje secadora Luis Ramírez">
+            <div class="order-header-line">
+              <div class="order-header-tags">
+                <span class="order-code-badge">ORD-0135</span>
+                <span class="badge-state badge-completed">
+                  <span class="state-dot" aria-hidden="true"></span>
+                  Completada
+                </span>
+                <span class="specialty-pill">Reparación de Electrodomésticos</span>
+              </div>
+              <div class="order-time-stamp">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Ayer 15:20</span>
+              </div>
+            </div>
+
+            <div class="fault-text">
+              "Cambio de rodaje de secadora"
+            </div>
+
+            <div class="order-meta-grid">
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Cliente: <strong class="meta-field-strong">Javier Osorio</strong></span>
+              </div>
+
+              <div class="meta-field">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Urb. El Golf, Trujillo</span>
+              </div>
+            </div>
+
+            <div class="order-action-bar">
+              <div class="action-bar-info">
+                <span class="meta-field">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                  </svg>
+                  Técnico: <strong class="meta-field-strong">Luis Ramírez</strong>
+                </span>
+                <span class="rating-badge" aria-label="Calificación: 5 de 5">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="#d97706" stroke="#d97706" aria-hidden="true">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                  </svg>
+                  Calificación: 5 de 5
+                </span>
+              </div>
+
+              <button type="button" class="btn-action btn-action-secondary" onclick="selectOrder('ORD-0135')" aria-label="Ver detalle de la orden ORD-0135">
+                Ver detalle
+              </button>
+            </div>
+          </li>
+
+        </ul>
+      </section>
+
+      <!-- Columna derecha: Panel lateral abierto para ORD-0142 -->
+      <aside class="side-assignment-panel" id="panelAsignacion" aria-label="Panel de asignación para la orden seleccionada">
+        <div class="panel-top-header">
+          <div class="panel-title-group">
+            <h2 class="panel-heading-text">Asignación de técnico</h2>
+            <span class="order-code-badge" id="sideCode">ORD-0142</span>
+            <span class="badge-state badge-pending" id="sideState">
+              <span class="state-dot" aria-hidden="true"></span>
+              Pendiente
+            </span>
+          </div>
+          <button type="button" class="panel-dismiss-btn" aria-label="Cerrar panel de asignación" onclick="toggleSidePanel(false)">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="panel-scrollable-body">
+
+          <!-- Resumen de orden -->
+          <div class="panel-card-brief">
+            <div class="panel-card-brief-header">
+              <span class="specialty-pill" id="sideSpecialty">Reparación de Electrodomésticos</span>
+              <span class="order-time-stamp" id="sideTime">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Hoy 14:30
+              </span>
+            </div>
+
+            <div class="meta-field">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span>Cliente: <strong class="meta-field-strong" id="sideClient">Rosa Chávez</strong></span>
+            </div>
+
+            <!-- Descripción completa de la falla -->
+            <div class="panel-full-fault-box">
+              <div class="panel-micro-label">Descripción completa de la falla:</div>
+              <p class="panel-fault-quote" id="sideFault">"La lavadora no centrifuga y bota agua por abajo"</p>
+            </div>
+          </div>
+
+          <!-- Las 3 fotos como miniaturas -->
+          <div class="thumbnails-block" id="sidePhotosBlock">
+            <div class="thumbnails-label-row">
+              <span class="thumbnails-caption-title">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Fotos adjuntas (3)
+              </span>
+              <span style="font-size: 11px; color: var(--text-secondary);">Clic para ampliar</span>
+            </div>
+
+            <div class="thumbnails-layout-grid">
+              <!-- Miniatura 1 -->
+              <button type="button" class="thumb-item-btn" onclick="openPhotoViewer('Foto 1: Frontal de la lavadora', 'lavadora_frontal')" aria-label="Ver foto 1: Frontal de la lavadora">
+                <div class="thumb-canvas-box">
+                  <svg class="thumb-svg-graphic" viewBox="0 0 100 60" aria-hidden="true">
+                    <rect width="100" height="60" fill="#cbd5e1"/>
+                    <rect x="25" y="6" width="50" height="48" rx="2" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+                    <rect x="30" y="10" width="40" height="7" rx="1" fill="#e2e8f0"/>
+                    <circle cx="35" cy="13.5" r="1.5" fill="#475569"/>
+                    <circle cx="50" cy="34" r="13" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+                    <circle cx="50" cy="34" r="9" fill="#cbd5e1"/>
+                  </svg>
+                  <span class="thumb-expand-icon">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </span>
+                </div>
+                <span class="thumb-text-legend">1. Frontal</span>
+              </button>
+
+              <!-- Miniatura 2 -->
+              <button type="button" class="thumb-item-btn" onclick="openPhotoViewer('Foto 2: Fuga de agua en base', 'lavadora_fuga')" aria-label="Ver foto 2: Fuga de agua en base">
+                <div class="thumb-canvas-box">
+                  <svg class="thumb-svg-graphic" viewBox="0 0 100 60" aria-hidden="true">
+                    <rect width="100" height="60" fill="#e2e8f0"/>
+                    <rect x="20" y="10" width="60" height="32" rx="2" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+                    <path d="M10 48 Q 30 42 55 47 Q 75 52 90 47 Q 75 56 40 55 Q 15 54 10 48 Z" fill="#93c5fd" opacity="0.9"/>
+                    <circle cx="35" cy="42" r="2" fill="#2563eb"/>
+                    <circle cx="55" cy="43" r="2.5" fill="#2563eb"/>
+                  </svg>
+                  <span class="thumb-expand-icon">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </span>
+                </div>
+                <span class="thumb-text-legend">2. Fuga base</span>
+              </button>
+
+              <!-- Miniatura 3 -->
+              <button type="button" class="thumb-item-btn" onclick="openPhotoViewer('Foto 3: Desagüe posterior', 'lavadora_desague')" aria-label="Ver foto 3: Desagüe posterior">
+                <div class="thumb-canvas-box">
+                  <svg class="thumb-svg-graphic" viewBox="0 0 100 60" aria-hidden="true">
+                    <rect width="100" height="60" fill="#cbd5e1"/>
+                    <path d="M25 10 L75 10 L68 50 L32 50 Z" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+                    <path d="M62 42 Q 78 46 80 58" fill="none" stroke="#334155" stroke-width="4" stroke-dasharray="2 2"/>
+                    <circle cx="50" cy="28" r="11" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="2 2"/>
+                  </svg>
+                  <span class="thumb-expand-icon">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </span>
+                </div>
+                <span class="thumb-text-legend">3. Desagüe</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dirección con botón "Ver en el mapa" -->
+          <div class="address-location-card">
+            <div class="address-left-info">
+              <svg class="icon address-map-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <div class="address-texts">
+                <div class="address-subheading">Dirección del servicio</div>
+                <div class="address-value" id="sideAddress">Urb. Primavera, Mz. C Lt. 14, Trujillo</div>
+              </div>
+            </div>
+
+            <button type="button" class="btn-action btn-action-secondary btn-action-sm" onclick="showMapDialog()">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+              </svg>
+              Ver en el mapa
+            </button>
+          </div>
+
+          <!-- Lista de técnicos para elegir uno -->
+          <div class="tech-picker-block">
+            <div class="tech-picker-header">
+              <span class="tech-picker-heading">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Técnicos del taller
+              </span>
+              <span style="font-size: 11px; color: var(--text-secondary);">Elige un técnico</span>
+            </div>
+
+            <fieldset class="technicians-options-list">
+              <legend style="display: none;">Técnicos disponibles para asignar</legend>
+
+              <!-- 1. Luis Ramírez — Electrodomésticos, Hogar — Disponible — 2 órdenes hoy -->
+              <label class="technician-option-card is-chosen-technician" id="cardTechLuis">
+                <input type="radio"
+                       name="tecnico_elegido"
+                       value="Luis Ramírez"
+                       class="tech-radio-control"
+                       checked
+                       onchange="pickTechnician('Luis Ramírez')">
+                <div class="tech-details-pane">
+                  <div class="tech-name-row">
+                    <span class="tech-full-name">Luis Ramírez</span>
+                    <span class="tech-availability-indicator avail-ready">
+                      <span class="state-dot" aria-hidden="true"></span>
+                      Disponible
+                    </span>
+                  </div>
+                  <div class="tech-specialties-line">Electrodomésticos, Hogar</div>
+                  <div class="tech-orders-today">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    2 órdenes hoy
+                  </div>
+                </div>
+              </label>
+
+              <!-- 2. Ana Quispe — Hogar, Informática — En servicio hasta las 13:00 — 3 órdenes hoy -->
+              <label class="technician-option-card" id="cardTechAna">
+                <input type="radio"
+                       name="tecnico_elegido"
+                       value="Ana Quispe"
+                       class="tech-radio-control"
+                       onchange="pickTechnician('Ana Quispe')">
+                <div class="tech-details-pane">
+                  <div class="tech-name-row">
+                    <span class="tech-full-name">Ana Quispe</span>
+                    <span class="tech-availability-indicator avail-busy">
+                      <span class="state-dot" aria-hidden="true"></span>
+                      En servicio hasta las 13:00
+                    </span>
+                  </div>
+                  <div class="tech-specialties-line">Hogar, Informática</div>
+                  <div class="tech-orders-today">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    3 órdenes hoy
+                  </div>
+                </div>
+              </label>
+
+              <!-- 3. Carlos Núñez — Informática — Disponible — 1 orden hoy -->
+              <label class="technician-option-card" id="cardTechCarlos">
+                <input type="radio"
+                       name="tecnico_elegido"
+                       value="Carlos Núñez"
+                       class="tech-radio-control"
+                       onchange="pickTechnician('Carlos Núñez')">
+                <div class="tech-details-pane">
+                  <div class="tech-name-row">
+                    <span class="tech-full-name">Carlos Núñez</span>
+                    <span class="tech-availability-indicator avail-ready">
+                      <span class="state-dot" aria-hidden="true"></span>
+                      Disponible
+                    </span>
+                  </div>
+                  <div class="tech-specialties-line">Informática</div>
+                  <div class="tech-orders-today">
+                    <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    1 orden hoy
+                  </div>
+                </div>
+              </label>
+
+            </fieldset>
+          </div>
+
+        </div>
+
+        <!-- Botón abajo: Asignar y enviar correo al técnico -->
+        <div class="panel-bottom-dock">
+          <div id="assignBanner" class="assignment-status-banner" role="status">
+            <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span id="assignBannerText">Orden asignada correctamente.</span>
+          </div>
+
+          <button type="button" class="btn-action btn-action-primary btn-full-width" id="btnConfirmAssign" onclick="executeAssignment()">
+            Asignar y enviar correo al técnico
+          </button>
+        </div>
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- Diálogo: Ver en el mapa -->
+  <div class="dialog-overlay" id="mapDialog" role="dialog" aria-modal="true" aria-labelledby="mapDialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-top">
+        <h3 class="dialog-heading" id="mapDialogTitle">Ubicación en Trujillo</h3>
+        <button type="button" class="panel-dismiss-btn" aria-label="Cerrar mapa" onclick="closeMapDialog()">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-content">
+        <div style="margin-bottom: 10px; font-size: 12.5px;">
+          <strong>Dirección:</strong> <span id="mapDialogAddressText">Urb. Primavera, Mz. C Lt. 14, Trujillo</span>
+        </div>
+        <div style="width: 100%; height: 260px; background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden;">
+          <svg width="100%" height="100%" viewBox="0 0 600 300" aria-label="Croquis de ubicación Trujillo">
+            <rect width="600" height="300" fill="#f8fafc"/>
+            <rect x="40" y="30" width="130" height="70" fill="#e2e8f0" rx="3"/>
+            <rect x="190" y="30" width="180" height="70" fill="#e2e8f0" rx="3"/>
+            <rect x="390" y="30" width="170" height="70" fill="#e2e8f0" rx="3"/>
+
+            <rect x="40" y="120" width="130" height="70" fill="#e2e8f0" rx="3"/>
+            <rect x="190" y="120" width="180" height="70" fill="#fed7aa" rx="3"/>
+            <rect x="390" y="120" width="170" height="70" fill="#e2e8f0" rx="3"/>
+
+            <rect x="40" y="210" width="130" height="60" fill="#e2e8f0" rx="3"/>
+            <rect x="190" y="210" width="180" height="60" fill="#e2e8f0" rx="3"/>
+            <rect x="390" y="210" width="170" height="60" fill="#e2e8f0" rx="3"/>
+
+            <line x1="0" y1="110" x2="600" y2="110" stroke="#ffffff" stroke-width="12"/>
+            <line x1="0" y1="200" x2="600" y2="200" stroke="#ffffff" stroke-width="12"/>
+            <line x1="180" y1="0" x2="180" y2="300" stroke="#ffffff" stroke-width="12"/>
+            <line x1="380" y1="0" x2="380" y2="300" stroke="#ffffff" stroke-width="12"/>
+
+            <text x="185" y="105" font-size="11" fill="#64748b" font-family="sans-serif">Av. América Norte</text>
+            <text x="185" y="195" font-size="11" fill="#64748b" font-family="sans-serif">Av. Manuel Vera Enríquez</text>
+            <text x="210" y="145" font-size="13" font-weight="bold" fill="#9a3412" font-family="sans-serif">Urb. Primavera</text>
+            <text x="210" y="162" font-size="11" fill="#78350f" font-family="sans-serif">Mz. C Lt. 14</text>
+
+            <g transform="translate(280, 145)">
+              <circle cx="0" cy="0" r="14" fill="#1d4ed8" fill-opacity="0.2"/>
+              <path d="M0 -16 C -8 -16, -10 -8, 0 8 C 10 -8, 8 -16, 0 -16 Z" fill="#1d4ed8"/>
+              <circle cx="0" cy="-8" r="4" fill="#ffffff"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <div class="dialog-bottom-bar">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeMapDialog()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diálogo: Ampliar foto adjunta -->
+  <div class="dialog-overlay" id="photoDialog" role="dialog" aria-modal="true" aria-labelledby="photoDialogTitle">
+    <div class="dialog-card">
+      <div class="dialog-top">
+        <h3 class="dialog-heading" id="photoDialogTitle">Foto adjunta</h3>
+        <button type="button" class="panel-dismiss-btn" aria-label="Cerrar foto" onclick="closePhotoViewer()">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-content" style="text-align: center;">
+        <div id="photoStage" style="width: 100%; height: 280px; background-color: #f1f5f9; border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        </div>
+        <p id="photoCaptionText" style="margin-top: 8px; font-size: 12.5px; color: var(--text-secondary);"></p>
+      </div>
+      <div class="dialog-bottom-bar">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closePhotoViewer()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lógica y comportamiento interactivo -->
+  <script>
+    const databaseOrders = {
+      "ORD-0142": {
+        code: "ORD-0142",
+        status: "Pendiente",
+        statusBadgeClass: "badge-pending",
+        fault: "La lavadora no centrifuga y bota agua por abajo",
+        specialty: "Reparación de Electrodomésticos",
+        client: "Rosa Chávez",
+        address: "Urb. Primavera, Mz. C Lt. 14, Trujillo",
+        time: "Hoy 14:30",
+        photosCount: 3,
+        defaultTech: "Luis Ramírez"
+      },
+      "ORD-0141": {
+        code: "ORD-0141",
+        status: "Pendiente",
+        statusBadgeClass: "badge-pending",
+        fault: "No enciende la laptop, huele a quemado",
+        specialty: "Soporte Técnico e Informático",
+        client: "Miguel Aranda",
+        address: "Av. América Sur 3145, Trujillo",
+        time: "Hoy 16:00",
+        photosCount: 1,
+        defaultTech: "Carlos Núñez"
+      },
+      "ORD-0139": {
+        code: "ORD-0139",
+        status: "Asignada",
+        statusBadgeClass: "badge-assigned",
+        fault: "Tablero eléctrico hace corto al conectar la ducha",
+        specialty: "Servicios del Hogar",
+        client: "Elena Rodríguez",
+        address: "Urb. San Andrés, Etapa 3, Trujillo",
+        time: "Mañana 09:00",
+        photosCount: 0,
+        defaultTech: "Luis Ramírez"
+      },
+      "ORD-0138": {
+        code: "ORD-0138",
+        status: "En camino",
+        statusBadgeClass: "badge-en-route",
+        fault: "Aire acondicionado no enfría, gotea adentro",
+        specialty: "Servicios del Hogar",
+        client: "Farmacia Bolívar",
+        address: "Jr. Bolívar 460, Trujillo",
+        time: "Hoy 11:00",
+        photosCount: 0,
+        defaultTech: "Ana Quispe"
+      },
+      "ORD-0135": {
+        code: "ORD-0135",
+        status: "Completada",
+        statusBadgeClass: "badge-completed",
+        fault: "Cambio de rodaje de secadora",
+        specialty: "Reparación de Electrodomésticos",
+        client: "Javier Osorio",
+        address: "Urb. El Golf, Trujillo",
+        time: "Ayer 15:20",
+        photosCount: 0,
+        defaultTech: "Luis Ramírez"
+      }
+    };
+
+    let currentSelectedCode = "ORD-0142";
+    let chosenTechnician = "Luis Ramírez";
+    let filterTab = "Todas";
+    let filterSpecialty = "todas";
+    let filterSearch = "";
+
+    function filterByStateTab(stateName) {
+      filterTab = stateName;
+
+      document.querySelectorAll('.tab-item').forEach(btn => {
+        const isSelected = btn.getAttribute('data-tab-name') === stateName;
+        btn.classList.toggle('is-active-tab', isSelected);
+        btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+      });
+
+      renderFilteredOrders();
+    }
+
+    function onSearchTextChange(val) {
+      filterSearch = val.toLowerCase().trim();
+      renderFilteredOrders();
+    }
+
+    function onSpecialtyChange(val) {
+      filterSpecialty = val;
+      renderFilteredOrders();
+    }
+
+    function renderFilteredOrders() {
+      const cards = document.querySelectorAll('.order-card');
+      let visible = 0;
+
+      cards.forEach(card => {
+        const cardStatus = card.getAttribute('data-order-status');
+        const cardSpecialty = card.getAttribute('data-order-specialty');
+        const cardSearch = card.getAttribute('data-search-text').toLowerCase();
+
+        const matchTab = (filterTab === "Todas") ||
+                         (filterTab === "Pendientes" && cardStatus === "Pendiente") ||
+                         (filterTab === "Asignadas" && cardStatus === "Asignada") ||
+                         (filterTab === "En camino" && cardStatus === "En camino") ||
+                         (filterTab === "Completadas" && cardStatus === "Completada");
+
+        const matchSpecialty = (filterSpecialty === "todas") || (cardSpecialty === filterSpecialty);
+        const matchSearch = !filterSearch || cardSearch.includes(filterSearch);
+
+        if (matchTab && matchSpecialty && matchSearch) {
+          card.style.display = "";
+          visible++;
+        } else {
+          card.style.display = "none";
+        }
+      });
+
+      const badge = document.getElementById('counterBadge');
+      const emptyAlert = document.getElementById('trayEmptyAlert');
+
+      badge.textContent = `${visible} ${visible === 1 ? 'orden' : 'órdenes'}`;
+      emptyAlert.style.display = visible === 0 ? "block" : "none";
+    }
+
+    function selectOrder(code) {
+      const order = databaseOrders[code];
+      if (!order) return;
+
+      currentSelectedCode = code;
+
+      // Resaltar en la lista
+      document.querySelectorAll('.order-card').forEach(c => c.classList.remove('is-active-order'));
+      const targetCard = document.getElementById(`order-${code}`);
+      if (targetCard) targetCard.classList.add('is-active-order');
+
+      // Actualizar datos del panel
+      document.getElementById('sideCode').textContent = order.code;
+      document.getElementById('sideSpecialty').textContent = order.specialty;
+      document.getElementById('sideTime').innerHTML = `
+        <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        ${order.time}
+      `;
+      document.getElementById('sideClient').textContent = order.client;
+      document.getElementById('sideFault').textContent = `"${order.fault}"`;
+      document.getElementById('sideAddress').textContent = order.address;
+
+      const stateBadge = document.getElementById('sideState');
+      stateBadge.className = `badge-state ${order.statusBadgeClass}`;
+      stateBadge.innerHTML = `<span class="state-dot" aria-hidden="true"></span>${order.status}`;
+
+      // Si tiene fotos mostrar sección, si no ocultarla
+      const photosBlock = document.getElementById('sidePhotosBlock');
+      photosBlock.style.display = (order.photosCount > 0) ? "flex" : "none";
+
+      // Resetear banner
+      const banner = document.getElementById('assignBanner');
+      banner.classList.remove('is-shown');
+
+      // Restaurar visibilidad de panel
+      toggleSidePanel(true);
+
+      // Preseleccionar técnico sugerido
+      if (order.defaultTech === "Luis Ramírez") {
+        pickTechnician("Luis Ramírez");
+        document.getElementById('cardTechLuis').querySelector('input').checked = true;
+      } else if (order.defaultTech === "Carlos Núñez") {
+        pickTechnician("Carlos Núñez");
+        document.getElementById('cardTechCarlos').querySelector('input').checked = true;
+      } else if (order.defaultTech === "Ana Quispe") {
+        pickTechnician("Ana Quispe");
+        document.getElementById('cardTechAna').querySelector('input').checked = true;
+      }
+    }
+
+    function toggleSidePanel(show) {
+      const panel = document.getElementById('panelAsignacion');
+      panel.style.display = show ? "flex" : "none";
+    }
+
+    function pickTechnician(name) {
+      chosenTechnician = name;
+      document.querySelectorAll('.technician-option-card').forEach(card => card.classList.remove('is-chosen-technician'));
+
+      if (name === "Luis Ramírez") {
+        document.getElementById('cardTechLuis').classList.add('is-chosen-technician');
+      } else if (name === "Ana Quispe") {
+        document.getElementById('cardTechAna').classList.add('is-chosen-technician');
+      } else if (name === "Carlos Núñez") {
+        document.getElementById('cardTechCarlos').classList.add('is-chosen-technician');
+      }
+    }
+
+    function executeAssignment() {
+      const banner = document.getElementById('assignBanner');
+      const text = document.getElementById('assignBannerText');
+
+      text.textContent = `Orden ${currentSelectedCode} asignada a ${chosenTechnician}. Se envió el correo al técnico.`;
+      banner.classList.add('is-shown');
+
+      // Reflejar cambio de estado en la tarjeta de la bandeja si era pendiente
+      const card = document.getElementById(`order-${currentSelectedCode}`);
+      if (card && databaseOrders[currentSelectedCode].status === "Pendiente") {
+        const badge = card.querySelector('.badge-state');
+        if (badge) {
+          badge.className = "badge-state badge-assigned";
+          badge.innerHTML = `<span class="state-dot" aria-hidden="true"></span>Asignada`;
+        }
+        card.setAttribute('data-order-status', 'Asignada');
+      }
+    }
+
+    function showMapDialog() {
+      const order = databaseOrders[currentSelectedCode];
+      document.getElementById('mapDialogAddressText').textContent = order ? order.address : "Urb. Primavera, Mz. C Lt. 14, Trujillo";
+      document.getElementById('mapDialog').classList.add('is-open');
+    }
+
+    function closeMapDialog() {
+      document.getElementById('mapDialog').classList.remove('is-open');
+    }
+
+    function openPhotoViewer(title, type) {
+      document.getElementById('photoDialogTitle').textContent = title;
+      const stage = document.getElementById('photoStage');
+      const caption = document.getElementById('photoCaptionText');
+
+      if (type === 'lavadora_frontal') {
+        stage.innerHTML = `
+          <svg width="100%" height="100%" viewBox="0 0 380 260" aria-label="Lavadora frontal">
+            <rect width="380" height="260" fill="#f8fafc"/>
+            <rect x="100" y="25" width="180" height="210" rx="6" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
+            <rect x="115" y="40" width="150" height="28" rx="3" fill="#e2e8f0"/>
+            <circle cx="135" cy="54" r="7" fill="#0f172a"/>
+            <circle cx="155" cy="54" r="4" fill="#64748b"/>
+            <circle cx="170" cy="54" r="4" fill="#64748b"/>
+            <circle cx="190" cy="150" r="50" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+            <circle cx="190" cy="150" r="38" fill="#e2e8f0"/>
+          </svg>
+        `;
+        caption.textContent = "Foto 1: Vista frontal de la lavadora con compuerta de carga y panel de mandos.";
+      } else if (type === 'lavadora_fuga') {
+        stage.innerHTML = `
+          <svg width="100%" height="100%" viewBox="0 0 380 260" aria-label="Fuga en base">
+            <rect width="380" height="260" fill="#f8fafc"/>
+            <rect x="20" y="20" width="340" height="130" fill="#e2e8f0"/>
+            <line x1="20" y1="150" x2="360" y2="150" stroke="#94a3b8" stroke-width="2"/>
+            <rect x="20" y="150" width="340" height="90" fill="#f1f5f9"/>
+            <rect x="80" y="50" width="220" height="120" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+            <path d="M40 190 Q 150 170 260 195 Q 330 215 310 230 Q 200 240 100 225 Q 30 215 40 190 Z" fill="#93c5fd" opacity="0.85"/>
+            <path d="M140 170 L 135 195" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+            <path d="M220 170 L 225 200" stroke="#2563eb" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        `;
+        caption.textContent = "Foto 2: Filtración continua de agua en la base inferior sobre el piso.";
+      } else {
+        stage.innerHTML = `
+          <svg width="100%" height="100%" viewBox="0 0 380 260" aria-label="Desagüe posterior">
+            <rect width="380" height="260" fill="#f8fafc"/>
+            <rect x="50" y="25" width="280" height="210" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+            <circle cx="190" cy="120" r="60" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+            <path d="M220 165 Q 260 185 270 230" fill="none" stroke="#334155" stroke-width="10" stroke-dasharray="2 2"/>
+            <circle cx="220" cy="165" r="8" fill="#f59e0b"/>
+          </svg>
+        `;
+        caption.textContent = "Foto 3: Detalle posterior del ducto y manguera de desagüe de la tina.";
+      }
+
+      document.getElementById('photoDialog').classList.add('is-open');
+    }
+
+    function closePhotoViewer() {
+      document.getElementById('photoDialog').classList.remove('is-open');
+    }
+
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeMapDialog();
+        closePhotoViewer();
+      }
+    });
+
+    document.querySelectorAll('.dialog-overlay').forEach(overlay => {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+          overlay.classList.remove('is-open');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

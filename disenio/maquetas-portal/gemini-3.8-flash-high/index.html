@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TechServ — Reserva tu servicio técnico a domicilio</title>
+  <style>
+    /* Variables de diseño */
+    :root {
+      --bg-body: #f8fafc;
+      --bg-card: #ffffff;
+      --border-color: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --blue-action: #1d4ed8;
+      --blue-hover: #1e40af;
+      --blue-selected-bg: #eff6ff;
+      --blue-selected-border: #1d4ed8;
+      --amber-rating: #d97706;
+      --green-available: #059669;
+      --green-available-bg: #ecfdf5;
+      --gray-muted-bg: #f1f5f9;
+      --error-color: #b91c1c;
+      --error-bg: #fef2f2;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-subtle: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Reset básico y accesibilidad */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      padding-bottom: 4rem;
+    }
+
+    /* Focus visible accesible para todos los elementos interactivos */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    .specialty-card:focus-within,
+    .workshop-card:focus-within,
+    .dropzone:focus-visible {
+      outline: 2px solid var(--blue-action);
+      outline-offset: 2px;
+    }
+
+    /* Utilidad para elementos ocultos visualmente pero accesibles a lectores de pantalla */
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    /* Barra superior */
+    .topbar {
+      background-color: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .topbar-container {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0.875rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      font-size: 1.375rem;
+      font-weight: 700;
+      color: var(--text-main);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-accent {
+      color: var(--blue-action);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-link {
+      color: var(--blue-action);
+      text-decoration: none;
+      font-size: 0.9375rem;
+      font-weight: 500;
+    }
+
+    .nav-link:hover {
+      text-decoration: underline;
+    }
+
+    .btn-login {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      min-height: 38px;
+    }
+
+    .btn-login:hover {
+      background-color: var(--gray-muted-bg);
+      border-color: #cbd5e1;
+    }
+
+    /* Contenedor Principal */
+    .main-wrapper {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 1rem 1.25rem;
+    }
+
+    /* Encabezado de página */
+    .page-header {
+      margin-bottom: 2rem;
+    }
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.25;
+      letter-spacing: -0.015em;
+      margin-bottom: 0.375rem;
+    }
+
+    .page-subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Layout en 2 columnas */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.75rem;
+      align-items: start;
+    }
+
+    /* Secciones del formulario */
+    .section-block {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-subtle);
+    }
+
+    .section-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    /* Selector de especialidad */
+    .specialty-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .specialty-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background-color: #ffffff;
+      cursor: pointer;
+      min-height: 64px;
+    }
+
+    .specialty-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .specialty-card.is-selected {
+      border: 2px solid var(--blue-selected-border);
+      background-color: var(--blue-selected-bg);
+      padding: calc(1rem - 1px) calc(1.25rem - 1px);
+    }
+
+    .radio-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #94a3b8;
+      background-color: #ffffff;
+      margin-top: 0.125rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .specialty-card.is-selected .radio-circle,
+    .workshop-card.is-selected .radio-circle {
+      border-color: var(--blue-action);
+    }
+
+    .specialty-card.is-selected .radio-circle::after,
+    .workshop-card.is-selected .radio-circle::after {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--blue-action);
+    }
+
+    .specialty-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .specialty-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .specialty-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* Lista de talleres */
+    .workshops-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.875rem;
+    }
+
+    .workshop-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.125rem 1.25rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background-color: #ffffff;
+      cursor: pointer;
+    }
+
+    .workshop-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .workshop-card.is-selected {
+      border: 2px solid var(--blue-selected-border);
+      background-color: var(--blue-selected-bg);
+      padding: calc(1.125rem - 1px) calc(1.25rem - 1px);
+    }
+
+    .workshop-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .workshop-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .workshop-name {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .workshop-price {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .workshop-details-row {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      flex-wrap: wrap;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .workshop-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .star-icon {
+      width: 16px;
+      height: 16px;
+      fill: var(--amber-rating);
+      flex-shrink: 0;
+    }
+
+    .rating-services {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .meta-bullet {
+      color: #94a3b8;
+    }
+
+    .workshop-location {
+      color: var(--text-muted);
+    }
+
+    /* Badges de atención */
+    .badge-today {
+      color: var(--green-available);
+      background-color: var(--green-available-bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .badge-tomorrow {
+      color: var(--text-muted);
+      background-color: var(--gray-muted-bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    /* Formulario de reserva */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 0.375rem;
+    }
+
+    .form-control {
+      width: 100%;
+      min-height: 44px;
+      padding: 0.625rem 0.875rem;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      color: var(--text-main);
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+    }
+
+    .form-control::placeholder {
+      color: #94a3b8;
+    }
+
+    textarea.form-control {
+      min-height: 84px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+
+    select.form-control {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 16px;
+      padding-right: 2.25rem;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .field-error {
+      color: var(--error-color);
+      font-size: 0.8125rem;
+      margin-top: 0.25rem;
+      min-height: 1.125rem;
+      display: none;
+    }
+
+    .has-error .form-control {
+      border-color: var(--error-color);
+      background-color: var(--error-bg);
+    }
+
+    .has-error .field-error {
+      display: block;
+    }
+
+    /* Zona de carga de fotos */
+    .dropzone {
+      border: 2px dashed #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      text-align: center;
+      background-color: #f8fafc;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 0.875rem;
+    }
+
+    .dropzone:hover {
+      border-color: var(--blue-action);
+      background-color: #eff6ff;
+    }
+
+    .dropzone-icon {
+      width: 24px;
+      height: 24px;
+      color: var(--text-muted);
+    }
+
+    .dropzone-text {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .dropzone-action {
+      color: var(--blue-action);
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    /* Miniaturas de fotos cargadas */
+    .thumbnails-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .thumb-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background-color: #ffffff;
+    }
+
+    .thumb-img-wrapper {
+      width: 52px;
+      height: 52px;
+      border-radius: 4px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background-color: #e2e8f0;
+      border: 1px solid #cbd5e1;
+    }
+
+    .thumb-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .thumb-meta {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .thumb-filename {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-remove-thumb {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: #b91c1c;
+      font-family: inherit;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      padding: 0.35rem 0.625rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      flex-shrink: 0;
+      min-height: 32px;
+    }
+
+    .btn-remove-thumb:hover {
+      background-color: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    /* Distribución Fecha y Hora */
+    .datetime-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .time-slots {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .time-btn {
+      min-height: 44px;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+      background-color: #ffffff;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .time-btn:hover:not(:disabled):not(.is-selected) {
+      border-color: #94a3b8;
+      background-color: var(--gray-muted-bg);
+    }
+
+    .time-btn.is-selected {
+      border: 2px solid var(--blue-selected-border);
+      background-color: var(--blue-selected-bg);
+      color: var(--blue-action);
+      font-weight: 700;
+    }
+
+    .time-btn:disabled,
+    .time-btn.is-disabled {
+      border-color: #e2e8f0;
+      background-color: #f1f5f9;
+      color: #94a3b8;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
+    /* Campos de contacto */
+    .contact-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* Resumen Lateral Fijo */
+    .summary-column {
+      position: sticky;
+      top: 5rem;
+    }
+
+    .summary-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-subtle);
+    }
+
+    .summary-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .summary-details {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .summary-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .summary-label {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .summary-value {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .summary-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 0.25rem 0;
+    }
+
+    .summary-price-box {
+      background-color: var(--bg-body);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.875rem 1rem;
+    }
+
+    .summary-price-label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+
+    .summary-price-amount {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: block;
+    }
+
+    .summary-note {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .btn-confirm {
+      width: 100%;
+      min-height: 48px;
+      background-color: var(--blue-action);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.25rem;
+    }
+
+    .btn-confirm:hover {
+      background-color: var(--blue-hover);
+    }
+
+    /* Modal / Confirmación accesible */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(15, 23, 42, 0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      z-index: 100;
+    }
+
+    .modal-backdrop.is-open {
+      display: flex;
+    }
+
+    .modal-window {
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-body {
+      font-size: 0.9375rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-list {
+      background-color: var(--bg-body);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .modal-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .modal-item-label {
+      color: var(--text-muted);
+    }
+
+    .modal-item-value {
+      font-weight: 600;
+      color: var(--text-main);
+      text-align: right;
+    }
+
+    .btn-modal-close {
+      width: 100%;
+      min-height: 44px;
+      background-color: var(--blue-action);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-modal-close:hover {
+      background-color: var(--blue-hover);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-column {
+        position: static;
+        margin-top: 1rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .topbar-container {
+        padding: 0.75rem 1rem;
+      }
+
+      .topbar-actions {
+        gap: 0.875rem;
+      }
+
+      .nav-link {
+        font-size: 0.875rem;
+      }
+
+      .btn-login {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8125rem;
+        min-height: 34px;
+      }
+
+      .page-title {
+        font-size: 1.375rem;
+      }
+
+      .datetime-row,
+      .contact-row {
+        grid-template-columns: 1fr;
+      }
+
+      .time-slots {
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      }
+
+      .workshop-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+
+      .thumbnails-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Accesibilidad: Reducción de movimiento */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra superior -->
+  <header class="topbar">
+    <div class="topbar-container">
+      <a href="#" class="brand">Tech<span class="brand-accent">Serv</span></a>
+      <div class="topbar-actions">
+        <a href="#mis-solicitudes" class="nav-link">Mis solicitudes</a>
+        <button type="button" class="btn-login">Iniciar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenido principal -->
+  <main class="main-wrapper">
+    <!-- Encabezado corto -->
+    <div class="page-header">
+      <h1 class="page-title">Reserva tu servicio técnico a domicilio</h1>
+      <p class="page-subtitle">Talleres de Trujillo, con precio y calificación a la vista.</p>
+    </div>
+
+    <div class="content-grid">
+      <!-- Columna Principal -->
+      <div class="main-content">
+
+        <!-- Selector de especialidad -->
+        <section class="section-block" aria-labelledby="title-especialidad">
+          <h2 id="title-especialidad" class="section-title">Especialidad</h2>
+          <div class="specialty-list" role="radiogroup" aria-labelledby="title-especialidad">
+            
+            <!-- Opción 1: Elegida por defecto -->
+            <label class="specialty-card is-selected" for="esp-1" id="label-esp-1">
+              <input type="radio" id="esp-1" name="especialidad" value="Reparación de Electrodomésticos" checked class="visually-hidden">
+              <div class="radio-circle" aria-hidden="true"></div>
+              <div class="specialty-content">
+                <span class="specialty-name">Reparación de Electrodomésticos</span>
+                <span class="specialty-desc">lavadoras, refrigeradoras, secadoras</span>
+              </div>
+            </label>
+
+            <!-- Opción 2 -->
+            <label class="specialty-card" for="esp-2" id="label-esp-2">
+              <input type="radio" id="esp-2" name="especialidad" value="Servicios del Hogar" class="visually-hidden">
+              <div class="radio-circle" aria-hidden="true"></div>
+              <div class="specialty-content">
+                <span class="specialty-name">Servicios del Hogar</span>
+                <span class="specialty-desc">gasfitería, electricidad, aire acondicionado</span>
+              </div>
+            </label>
+
+            <!-- Opción 3 -->
+            <label class="specialty-card" for="esp-3" id="label-esp-3">
+              <input type="radio" id="esp-3" name="especialidad" value="Soporte Técnico e Informático" class="visually-hidden">
+              <div class="radio-circle" aria-hidden="true"></div>
+              <div class="specialty-content">
+                <span class="specialty-name">Soporte Técnico e Informático</span>
+                <span class="specialty-desc">laptops, PC, cámaras de seguridad</span>
+              </div>
+            </label>
+
+          </div>
+        </section>
+
+        <!-- Lista de talleres disponibles -->
+        <section class="section-block" aria-labelledby="title-talleres">
+          <h2 id="title-talleres" class="section-title">Talleres disponibles</h2>
+          <div class="workshops-list" role="radiogroup" aria-labelledby="title-talleres">
+
+            <!-- Taller 1: Seleccionado -->
+            <label class="workshop-card is-selected" for="taller-1" id="card-taller-1">
+              <input type="radio" id="taller-1" name="taller" value="Servicios Delgado E.I.R.L." data-price="60" checked class="visually-hidden">
+              <div class="radio-circle" aria-hidden="true"></div>
+              <div class="workshop-body">
+                <div class="workshop-header-row">
+                  <span class="workshop-name">Servicios Delgado E.I.R.L.</span>
+                  <span class="workshop-price">Desde S/ 60 por visita</span>
+                </div>
+                <div class="workshop-details-row">
+                  <span class="workshop-rating">
+                    <svg class="star-icon" viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    4.8 de 5 <span class="rating-services">(126 servicios)</span>
+                  </span>
+                  <span class="meta-bullet" aria-hidden="true">•</span>
+                  <span class="workshop-location">Urb. Primavera, Trujillo</span>
+                  <span class="meta-bullet" aria-hidden="true">•</span>
+                  <span class="badge-today">Atiende hoy</span>
+                </div>
+              </div>
+            </label>
+
+            <!-- Taller 2 -->
+            <label class="workshop-card" for="taller-2" id="card-taller-2">
+              <input type="radio" id="taller-2" name="taller" value="TecnoHogar Trujillo" data-price="55" class="visually-hidden">
+              <div class="radio-circle" aria-hidden="true"></div>
+              <div class="workshop-body">
+                <div class="workshop-header-row">
+                  <span class="workshop-name">TecnoHogar Trujillo</span>
+                  <span class="workshop-price">Desde S/ 55 por visita</span>
+                </div>
+                <div class="workshop-details-row">
+                  <span class="workshop-rating">
+                    <svg class="star-icon" viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    4.6 de 5 <span class="rating-services">(89 servicios)</span>
+                  </span>
+                  <span class="meta-bullet" aria-hidden="true">•</span>
+                  <span class="workshop-location">Av. España, Trujillo</span>
+                  <span class="meta-bullet" aria-hidden="true">•</span>
+                  <span class="badge-tomorrow">Atiende desde mañana</span>
+                </div>
+              </div>
+            </label>
+
+            <!-- Taller 3 -->
+            <label class="workshop-card" for="taller-3" id="card-taller-3">
+              <input type="radio" id="taller-3" name="taller" value="Reparaciones La Libertad" data-price="45" class="visually-hidden">
+              <div class="radio-circle" aria-hidden="true"></div>
+              <div class="workshop-body">
+                <div class="workshop-header-row">
+                  <span class="workshop-name">Reparaciones La Libertad</span>
+                  <span class="workshop-price">Desde S/ 45 por visita</span>
+                </div>
+                <div class="workshop-details-row">
+                  <span class="workshop-rating">
+                    <svg class="star-icon" viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    4.4 de 5 <span class="rating-services">(54 servicios)</span>
+                  </span>
+                  <span class="meta-bullet" aria-hidden="true">•</span>
+                  <span class="workshop-location">Urb. San Andrés, Trujillo</span>
+                  <span class="meta-bullet" aria-hidden="true">•</span>
+                  <span class="badge-today">Atiende hoy</span>
+                </div>
+              </div>
+            </label>
+
+          </div>
+        </section>
+
+        <!-- Formulario de reserva -->
+        <section class="section-block" aria-labelledby="title-formulario">
+          <h2 id="title-formulario" class="section-title">Formulario de reserva</h2>
+          <form id="booking-form" novalidate>
+            
+            <!-- ¿Qué está fallando? -->
+            <div class="form-group" id="group-falla">
+              <label for="falla" class="form-label">¿Qué está fallando?</label>
+              <textarea id="falla" name="falla" rows="3" class="form-control" required>La lavadora no centrifuga y bota agua por abajo</textarea>
+              <div class="field-error" id="error-falla" aria-live="polite">Por favor indica qué falla presenta el aparato.</div>
+            </div>
+
+            <!-- Fotos del problema (opcional) -->
+            <div class="form-group">
+              <span class="form-label" id="label-fotos">Fotos del problema (opcional)</span>
+              
+              <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-labelledby="label-fotos dropzone-text">
+                <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span class="dropzone-text" id="dropzone-text">Arrastra las fotos aquí o <span class="dropzone-action">elige archivos</span></span>
+                <input type="file" id="input-fotos" name="fotos" accept="image/*" multiple class="visually-hidden" aria-labelledby="label-fotos">
+              </div>
+
+              <!-- Miniaturas ya cargadas -->
+              <div class="thumbnails-grid" id="thumbnails-list">
+                
+                <!-- Miniatura 1 -->
+                <div class="thumb-card" id="thumb-1">
+                  <div class="thumb-img-wrapper" aria-hidden="true">
+                    <svg viewBox="0 0 52 52" class="thumb-svg">
+                      <rect width="52" height="52" fill="#cbd5e1"/>
+                      <rect x="8" y="6" width="36" height="40" rx="3" fill="#94a3b8"/>
+                      <circle cx="26" cy="26" r="12" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+                      <circle cx="26" cy="26" r="6" fill="#334155"/>
+                      <path d="M26 38 C 24 45, 17 46, 12 48" stroke="#1d4ed8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div class="thumb-meta">
+                    <span class="thumb-filename">lavadora_fuga_base.jpg</span>
+                  </div>
+                  <button type="button" class="btn-remove-thumb" data-target="thumb-1" aria-label="Quitar foto lavadora_fuga_base.jpg">
+                    Quitar
+                  </button>
+                </div>
+
+                <!-- Miniatura 2 -->
+                <div class="thumb-card" id="thumb-2">
+                  <div class="thumb-img-wrapper" aria-hidden="true">
+                    <svg viewBox="0 0 52 52" class="thumb-svg">
+                      <rect width="52" height="52" fill="#cbd5e1"/>
+                      <rect x="6" y="12" width="40" height="28" rx="2" fill="#64748b"/>
+                      <line x1="6" y1="20" x2="46" y2="20" stroke="#cbd5e1" stroke-width="1.5"/>
+                      <circle cx="16" cy="16" r="2" fill="#38bdf8"/>
+                      <circle cx="23" cy="16" r="2" fill="#38bdf8"/>
+                      <path d="M8 44 Q 20 38 34 42 T 48 46 Q 30 50 14 48 Z" fill="#93c5fd"/>
+                    </svg>
+                  </div>
+                  <div class="thumb-meta">
+                    <span class="thumb-filename">panel_tambor_error.jpg</span>
+                  </div>
+                  <button type="button" class="btn-remove-thumb" data-target="thumb-2" aria-label="Quitar foto panel_tambor_error.jpg">
+                    Quitar
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Dirección -->
+            <div class="form-group" id="group-direccion">
+              <label for="direccion" class="form-label">Dirección</label>
+              <input type="text" id="direccion" name="direccion" class="form-control" autocomplete="street-address" required placeholder="Ej. Jr. San Martín 450">
+              <div class="field-error" id="error-direccion" aria-live="polite">Por favor ingresa tu dirección.</div>
+            </div>
+
+            <!-- Referencia (opcional) -->
+            <div class="form-group">
+              <label for="referencia" class="form-label">Referencia (opcional)</label>
+              <input type="text" id="referencia" name="referencia" class="form-control" placeholder="Ej. Frente al parque, casa de dos pisos con reja blanca">
+            </div>
+
+            <!-- Distrito -->
+            <div class="form-group">
+              <label for="distrito" class="form-label">Distrito</label>
+              <select id="distrito" name="distrito" class="form-control">
+                <option value="Trujillo" selected>Trujillo</option>
+                <option value="El Porvenir">El Porvenir</option>
+                <option value="Florencia de Mora">Florencia de Mora</option>
+                <option value="Huanchaco">Huanchaco</option>
+                <option value="La Esperanza">La Esperanza</option>
+                <option value="Laredo">Laredo</option>
+                <option value="Moche">Moche</option>
+                <option value="Salaverry">Salaverry</option>
+                <option value="Víctor Larco Herrera">Víctor Larco Herrera</option>
+              </select>
+            </div>
+
+            <!-- Fecha y Hora -->
+            <div class="datetime-row">
+              <div class="form-group" id="group-fecha">
+                <label for="fecha" class="form-label">Fecha</label>
+                <input type="date" id="fecha" name="fecha" class="form-control" value="2026-09-15" min="2026-09-15" required>
+                <div class="field-error" id="error-fecha" aria-live="polite">Selecciona una fecha válida.</div>
+              </div>
+
+              <div class="form-group">
+                <span class="form-label" id="label-hora">Hora</span>
+                <div class="time-slots" role="radiogroup" aria-labelledby="label-hora">
+                  <button type="button" role="radio" aria-checked="false" class="time-btn" data-time="08:00">08:00</button>
+                  <button type="button" role="radio" aria-checked="false" class="time-btn" data-time="09:00">09:00</button>
+                  <button type="button" role="radio" aria-checked="true" class="time-btn is-selected" data-time="10:00">10:00</button>
+                  <button type="button" role="radio" aria-checked="false" class="time-btn is-disabled" data-time="11:00" disabled aria-disabled="true">11:00</button>
+                  <button type="button" role="radio" aria-checked="false" class="time-btn" data-time="14:00">14:00</button>
+                  <button type="button" role="radio" aria-checked="false" class="time-btn" data-time="15:00">15:00</button>
+                  <button type="button" role="radio" aria-checked="false" class="time-btn" data-time="16:00">16:00</button>
+                </div>
+                <input type="hidden" id="selected-hour" name="hora" value="10:00">
+              </div>
+            </div>
+
+            <!-- Tu nombre -->
+            <div class="form-group" id="group-nombre">
+              <label for="nombre" class="form-label">Tu nombre</label>
+              <input type="text" id="nombre" name="nombre" class="form-control" autocomplete="name" required placeholder="Nombre y apellidos">
+              <div class="field-error" id="error-nombre" aria-live="polite">Por favor ingresa tu nombre completo.</div>
+            </div>
+
+            <!-- Teléfono y Correo electrónico -->
+            <div class="contact-row">
+              <div class="form-group" id="group-telefono">
+                <label for="telefono" class="form-label">Teléfono</label>
+                <input type="tel" id="telefono" name="telefono" class="form-control" autocomplete="tel" required placeholder="Ej. 949 123 456">
+                <div class="field-error" id="error-telefono" aria-live="polite">Ingresa un número de contacto válido.</div>
+              </div>
+
+              <div class="form-group" id="group-correo">
+                <label for="correo" class="form-label">Correo electrónico</label>
+                <input type="email" id="correo" name="correo" class="form-control" autocomplete="email" required placeholder="ejemplo@correo.com">
+                <div class="field-error" id="error-correo" aria-live="polite">Ingresa un correo electrónico válido.</div>
+              </div>
+            </div>
+
+          </form>
+        </section>
+
+      </div>
+
+      <!-- Resumen Fijo al costado (o abajo en móvil) -->
+      <aside class="summary-column" aria-label="Resumen de reserva">
+        <div class="summary-card">
+          <h2 class="summary-title">Resumen de reserva</h2>
+
+          <div class="summary-details">
+            <div class="summary-row">
+              <span class="summary-label">Taller elegido</span>
+              <span class="summary-value" id="summary-taller">Servicios Delgado E.I.R.L.</span>
+            </div>
+
+            <div class="summary-row">
+              <span class="summary-label">Especialidad</span>
+              <span class="summary-value" id="summary-especialidad">Reparación de Electrodomésticos</span>
+            </div>
+
+            <div class="summary-row">
+              <span class="summary-label">Fecha y hora</span>
+              <span class="summary-value" id="summary-horario">15 de setiembre de 2026, 10:00</span>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-price-box">
+              <span class="summary-price-label">Visita técnica:</span>
+              <span class="summary-price-amount" id="summary-precio">desde S/ 60</span>
+            </div>
+
+            <p class="summary-note">El costo final de repuestos y mano de obra se confirma tras el diagnóstico</p>
+          </div>
+
+          <button type="button" id="btn-confirmar" class="btn-confirm">Confirmar reserva</button>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- Modal de confirmación accesible -->
+  <div class="modal-backdrop" id="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-text">
+    <div class="modal-window">
+      <h3 class="modal-title" id="modal-title-text">Reserva registrada</h3>
+      <p class="modal-body">Hemos recibido los datos de tu solicitud para la visita técnica.</p>
+      
+      <div class="modal-list">
+        <div class="modal-item">
+          <span class="modal-item-label">Taller:</span>
+          <span class="modal-item-value" id="modal-taller">Servicios Delgado E.I.R.L.</span>
+        </div>
+        <div class="modal-item">
+          <span class="modal-item-label">Especialidad:</span>
+          <span class="modal-item-value" id="modal-especialidad">Reparación de Electrodomésticos</span>
+        </div>
+        <div class="modal-item">
+          <span class="modal-item-label">Fecha y hora:</span>
+          <span class="modal-item-value" id="modal-fecha-hora">15 de setiembre de 2026, 10:00</span>
+        </div>
+        <div class="modal-item">
+          <span class="modal-item-label">Dirección:</span>
+          <span class="modal-item-value" id="modal-direccion">-</span>
+        </div>
+        <div class="modal-item">
+          <span class="modal-item-label">Visita técnica:</span>
+          <span class="modal-item-value" id="modal-precio">desde S/ 60</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.5rem;">
+        <button type="button" class="btn-modal-close" id="btn-modal-close">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Variables de estado
+    let selectedSpecialty = 'Reparación de Electrodomésticos';
+    let selectedWorkshop = 'Servicios Delgado E.I.R.L.';
+    let selectedPrice = 'desde S/ 60';
+    let selectedDate = '2026-09-15';
+    let selectedHour = '10:00';
+
+    // Elementos del resumen
+    const summaryTallerEl = document.getElementById('summary-taller');
+    const summaryEspecialidadEl = document.getElementById('summary-especialidad');
+    const summaryHorarioEl = document.getElementById('summary-horario');
+    const summaryPrecioEl = document.getElementById('summary-precio');
+
+    // Nombres de los meses en español
+    const mesesEspanol = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+
+    function formatFechaHora(dateStr, hourStr) {
+      if (!dateStr) return hourStr;
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const day = parseInt(parts[2], 10);
+        const monthIndex = parseInt(parts[1], 10) - 1;
+        const year = parts[0];
+        const monthName = mesesEspanol[monthIndex] || '';
+        return `${day} de ${monthName} de ${year}, ${hourStr}`;
+      }
+      return `${dateStr}, ${hourStr}`;
+    }
+
+    function updateSummary() {
+      summaryTallerEl.textContent = selectedWorkshop;
+      summaryEspecialidadEl.textContent = selectedSpecialty;
+      summaryHorarioEl.textContent = formatFechaHora(selectedDate, selectedHour);
+      summaryPrecioEl.textContent = selectedPrice;
+    }
+
+    // 1. Manejo del selector de especialidad
+    const specialtyCards = document.querySelectorAll('.specialty-card');
+    specialtyCards.forEach(card => {
+      const radio = card.querySelector('input[type="radio"]');
+      radio.addEventListener('change', () => {
+        specialtyCards.forEach(c => c.classList.remove('is-selected'));
+        card.classList.add('is-selected');
+        selectedSpecialty = radio.value;
+        updateSummary();
+      });
+    });
+
+    // 2. Manejo de talleres
+    const workshopCards = document.querySelectorAll('.workshop-card');
+    workshopCards.forEach(card => {
+      const radio = card.querySelector('input[type="radio"]');
+      radio.addEventListener('change', () => {
+        workshopCards.forEach(c => c.classList.remove('is-selected'));
+        card.classList.add('is-selected');
+        selectedWorkshop = radio.value;
+        const price = radio.getAttribute('data-price');
+        selectedPrice = `desde S/ ${price}`;
+        updateSummary();
+      });
+    });
+
+    // 3. Manejo de botones de hora
+    const timeButtons = document.querySelectorAll('.time-btn');
+    const selectedHourInput = document.getElementById('selected-hour');
+
+    timeButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        if (button.disabled || button.classList.contains('is-disabled')) {
+          return;
+        }
+        timeButtons.forEach(btn => {
+          btn.classList.remove('is-selected');
+          btn.setAttribute('aria-checked', 'false');
+        });
+        button.classList.add('is-selected');
+        button.setAttribute('aria-checked', 'true');
+        selectedHour = button.getAttribute('data-time');
+        selectedHourInput.value = selectedHour;
+        updateSummary();
+      });
+    });
+
+    // 4. Manejo del campo Fecha
+    const fechaInput = document.getElementById('fecha');
+    fechaInput.addEventListener('change', (e) => {
+      selectedDate = e.target.value;
+      updateSummary();
+    });
+
+    // 5. Manejo de quitar miniaturas
+    const thumbnailsList = document.getElementById('thumbnails-list');
+    thumbnailsList.addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.btn-remove-thumb');
+      if (removeBtn) {
+        const targetId = removeBtn.getAttribute('data-target');
+        const targetCard = document.getElementById(targetId);
+        if (targetCard) {
+          targetCard.remove();
+        }
+      }
+    });
+
+    // Carga de fotos desde dropzone o explorador
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('input-fotos');
+
+    dropzone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    dropzone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#1d4ed8';
+      dropzone.style.backgroundColor = '#eff6ff';
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.style.borderColor = '#cbd5e1';
+      dropzone.style.backgroundColor = '#f8fafc';
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#cbd5e1';
+      dropzone.style.backgroundColor = '#f8fafc';
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleNewFiles(e.dataTransfer.files);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        handleNewFiles(fileInput.files);
+      }
+    });
+
+    let uploadedCount = 2;
+    function handleNewFiles(files) {
+      Array.from(files).forEach(file => {
+        uploadedCount++;
+        const cardId = `thumb-${uploadedCount}`;
+        const newCard = document.createElement('div');
+        newCard.className = 'thumb-card';
+        newCard.id = cardId;
+        newCard.innerHTML = `
+          <div class="thumb-img-wrapper" aria-hidden="true">
+            <svg viewBox="0 0 52 52" class="thumb-svg">
+              <rect width="52" height="52" fill="#cbd5e1"/>
+              <circle cx="26" cy="26" r="10" fill="#64748b"/>
+              <path d="M12 40 L 22 28 L 32 36 L 42 22" stroke="#1d4ed8" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+          <div class="thumb-meta">
+            <span class="thumb-filename">${escapeHtml(file.name)}</span>
+          </div>
+          <button type="button" class="btn-remove-thumb" data-target="${cardId}" aria-label="Quitar foto ${escapeHtml(file.name)}">
+            Quitar
+          </button>
+        `;
+        thumbnailsList.appendChild(newCard);
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 6. Validación del formulario y confirmación
+    const btnConfirmar = document.getElementById('btn-confirmar');
+    const modalBackdrop = document.getElementById('confirmation-modal');
+    const btnModalClose = document.getElementById('btn-modal-close');
+
+    function validateField(groupId, inputId, errorId, validatorFn) {
+      const group = document.getElementById(groupId);
+      const input = document.getElementById(inputId);
+      const isValid = validatorFn(input.value.trim());
+
+      if (!isValid) {
+        group.classList.add('has-error');
+        input.setAttribute('aria-invalid', 'true');
+        return false;
+      } else {
+        group.classList.remove('has-error');
+        input.removeAttribute('aria-invalid');
+        return true;
+      }
+    }
+
+    btnConfirmar.addEventListener('click', () => {
+      const isFallaValid = validateField('group-falla', 'falla', 'error-falla', val => val.length > 3);
+      const isDireccionValid = validateField('group-direccion', 'direccion', 'error-direccion', val => val.length > 2);
+      const isFechaValid = validateField('group-fecha', 'fecha', 'error-fecha', val => val.length > 0);
+      const isNombreValid = validateField('group-nombre', 'nombre', 'error-nombre', val => val.length > 2);
+      const isTelefonoValid = validateField('group-telefono', 'telefono', 'error-telefono', val => val.length >= 6);
+      const isCorreoValid = validateField('group-correo', 'correo', 'error-correo', val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val));
+
+      if (isFallaValid && isDireccionValid && isFechaValid && isNombreValid && isTelefonoValid && isCorreoValid) {
+        // Rellenar datos en modal
+        document.getElementById('modal-taller').textContent = selectedWorkshop;
+        document.getElementById('modal-especialidad').textContent = selectedSpecialty;
+        document.getElementById('modal-fecha-hora').textContent = formatFechaHora(selectedDate, selectedHour);
+        document.getElementById('modal-direccion').textContent = document.getElementById('direccion').value.trim() + ', ' + document.getElementById('distrito').value;
+        document.getElementById('modal-precio').textContent = selectedPrice;
+
+        modalBackdrop.classList.add('is-open');
+        btnModalClose.focus();
+      } else {
+        // Mover foco al primer campo erróneo
+        const firstError = document.querySelector('.has-error .form-control');
+        if (firstError) {
+          firstError.focus();
+        }
+      }
+    });
+
+    // Limpiar errores mientras el usuario escribe
+    ['falla', 'direccion', 'nombre', 'telefono', 'correo'].forEach(id => {
+      const input = document.getElementById(id);
+      input.addEventListener('input', () => {
+        const group = document.getElementById(`group-${id}`);
+        if (group && group.classList.contains('has-error')) {
+          group.classList.remove('has-error');
+          input.removeAttribute('aria-invalid');
+        }
+      });
+    });
+
+    btnModalClose.addEventListener('click', () => {
+      modalBackdrop.classList.remove('is-open');
+      btnConfirmar.focus();
+    });
+
+    // Cerrar modal con la tecla Esc
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalBackdrop.classList.contains('is-open')) {
+        modalBackdrop.classList.remove('is-open');
+        btnConfirmar.focus();
+      }
+    });
+
+    // Inicializar resumen
+    updateSummary();
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Tokens de TechServ. Dirección elegida el 15 set 2026: claro y profesional.
+   Todo color de la interfaz sale de aquí. Un hex suelto en un componente es un
+   fallo del verificador, no un atajo. */
+@theme {
+  /* superficies */
+  --color-lienzo: #f8fafc;
+  --color-superficie: #ffffff;
+  --color-superficie-suave: #f1f5f9;
+  --color-linea: #e2e8f0;
+  --color-linea-fuerte: #cbd5e1;
+
+  /* texto */
+  --color-tinta: #0f172a;
+  --color-tinta-media: #475569;
+  --color-tinta-suave: #64748b;
+
+  /* acción */
+  --color-accion: #1d4ed8;
+  --color-accion-viva: #2563eb;
+  --color-accion-honda: #1e40af;
+  --color-accion-tenue: #eff6ff;
+
+  /* estados de la orden — cada uno se acompaña SIEMPRE de su texto,
+     nunca se distingue solo por color */
+  --color-pendiente: #d97706;
+  --color-asignada: #1d4ed8;
+  --color-camino: #7c3aed;
+  --color-proceso: #0891b2;
+  --color-completada: #059669;
+  --color-cancelada: #64748b;
+  --color-peligro: #dc2626;
+
+  /* el suelo tipográfico del proyecto: nada por debajo de 12px */
+  --text-micro: 0.75rem;
+}
+
+html {
+  background-color: var(--color-lienzo);
+  color: var(--color-tinta);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visible en todo lo que se pueda tabular. No es decoración: hay gente
+   que navega este panel con el teclado durante toda la jornada. */
+:focus-visible {
+  outline: 2px solid var(--color-accion);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

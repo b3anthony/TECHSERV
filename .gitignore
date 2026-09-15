@@ -1,0 +1,27 @@
+# secretos
+.env
+
+# backend
+backend/target/
+*.class
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# subidas de la demo
+uploads/*
+!uploads/.gitkeep
+
+# salidas de los brazos de agy
+.agy-salida/
+.agy-arms/
+
+# maquetas generadas (se conservan a mano las elegidas)
+disenio/maquetas-*/_logs/
+
+# editores
+.idea/
+.vscode/
+*.swp

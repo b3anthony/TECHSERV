@@ -1,0 +1,75 @@
+# Panel del Administrador de la MYPE — bandeja de órdenes y asignación de técnico
+
+**Qué es.** TechServ es una plataforma web donde talleres pequeños del distrito de
+Trujillo (Perú) reciben solicitudes de reparación a domicilio y se las reparten a
+sus técnicos. Esta pantalla es el escritorio del dueño del taller: ve las órdenes
+que le entran, las revisa y le asigna un técnico a cada una. La usa en una laptop,
+de día, muchas veces al día.
+
+**Qué tiene que haber en pantalla.**
+
+- Barra superior con el nombre "TechServ", la navegación "Órdenes · Técnicos ·
+  Repuestos · Reportes" y, a la derecha, el nombre del negocio "Servicios Delgado
+  E.I.R.L." con su avatar y un menú para cerrar sesión.
+- Cuatro indicadores arriba, en una fila: "Pendientes 6", "Asignadas 3",
+  "En camino 2", "Completadas hoy 11".
+- Filtros de la bandeja: pestañas "Todas · Pendientes · Asignadas · En camino ·
+  Completadas", un buscador con el texto de ejemplo "Buscar por código, cliente o
+  distrito" y un selector "Todas las especialidades".
+- La bandeja de órdenes, como lista de tarjetas. Estas cinco, literales:
+
+  1. `ORD-0142` · Pendiente · "La lavadora no centrifuga y bota agua por abajo" ·
+     Reparación de Electrodomésticos · Cliente: Rosa Chávez ·
+     Urb. Primavera, Mz. C Lt. 14, Trujillo · Hoy 14:30 · 3 fotos adjuntas
+  2. `ORD-0141` · Pendiente · "No enciende la laptop, huele a quemado" ·
+     Soporte Técnico e Informático · Cliente: Miguel Aranda ·
+     Av. América Sur 3145, Trujillo · Hoy 16:00 · 1 foto adjunta
+  3. `ORD-0139` · Asignada · "Tablero eléctrico hace corto al conectar la ducha" ·
+     Servicios del Hogar · Cliente: Elena Rodríguez ·
+     Urb. San Andrés, Etapa 3, Trujillo · Mañana 09:00 ·
+     Técnico asignado: Luis Ramírez · Esperando confirmación
+  4. `ORD-0138` · En camino · "Aire acondicionado no enfría, gotea adentro" ·
+     Servicios del Hogar · Cliente: Farmacia Bolívar ·
+     Jr. Bolívar 460, Trujillo · Hoy 11:00 · Técnico: Ana Quispe
+  5. `ORD-0135` · Completada · "Cambio de rodaje de secadora" ·
+     Reparación de Electrodomésticos · Cliente: Javier Osorio ·
+     Urb. El Golf, Trujillo · Ayer 15:20 · Técnico: Luis Ramírez ·
+     Calificación: 5 de 5
+
+- Cada tarjeta enseña: el código, el estado, la descripción de la falla, la
+  especialidad, el cliente, la dirección, la fecha y hora, y su acción principal.
+  La acción cambia con el estado: "Asignar técnico" en las pendientes, "Ver
+  detalle" en las demás.
+- Un panel lateral derecho (o un diálogo, tú eliges) **abierto** para `ORD-0142`,
+  mostrando la asignación: la descripción completa de la falla, las 3 fotos como
+  miniaturas, la dirección con un botón "Ver en el mapa", y la lista de técnicos
+  para elegir uno:
+  - Luis Ramírez — Electrodomésticos, Hogar — Disponible — 2 órdenes hoy
+  - Ana Quispe — Hogar, Informática — En servicio hasta las 13:00 — 3 órdenes hoy
+  - Carlos Núñez — Informática — Disponible — 1 orden hoy
+  Y abajo, el botón "Asignar y enviar correo al técnico".
+
+**Dirección visual.** Claro y profesional. Fondo `#f8fafc`, tarjetas blancas con
+borde `#e2e8f0`, texto principal `#0f172a` y secundario `#64748b`. Azul de acción
+`#1d4ed8` para los botones sólidos y los enlaces. Los estados se distinguen por un
+punto de color **más el texto**, nunca por color solo: Pendiente ámbar `#d97706`,
+Asignada azul `#1d4ed8`, En camino violeta `#7c3aed`, Completada verde `#059669`.
+Tipografía de sistema, densidad alta: es una herramienta de trabajo, no una
+landing. Foco visible en todo lo que se pueda tabular. Bordes redondeados suaves,
+sombras mínimas.
+
+**Qué NO quiero.** Nada de modo oscuro. Nada de gradientes de colores ni efecto
+glass. Nada de iconos de emoji. Nada de barras de progreso ni gráficos: esta
+pantalla es una bandeja, no un informe. Nada de tarjetas idénticas en rejilla de
+tres columnas: es una lista vertical que se lee de arriba abajo. Nada de sombras
+grandes ni de animaciones de entrada. Nada de texto en mayúsculas sostenidas como
+etiqueta encima de los títulos. Nada de "→" pegado al texto de los botones.
+
+**Copy.** Español con tildes, tal como está escrito arriba. Moneda: soles (S/).
+
+**Accesibilidad.** Todo lo interactivo con `:focus-visible` visible. Incluye un
+bloque `@media (prefers-reduced-motion: reduce)` si pones cualquier transición.
+
+**No inventes datos.** Nada de porcentajes, ingresos, latencias, testimonios,
+marcas ni números de teléfono que no estén aquí arriba. Si necesitas un dato que
+no tienes, no lo pongas.

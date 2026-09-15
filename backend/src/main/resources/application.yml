@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: techserv
+
+  datasource:
+    url: jdbc:postgresql://localhost:55432/${POSTGRES_DB:techserv}
+    username: ${POSTGRES_USER:techserv}
+    password: ${POSTGRES_PASSWORD:techserv_local}
+
+  jpa:
+    hibernate:
+      # El esquema lo manda Flyway. Hibernate no toca la estructura: solo valida
+      # que las entidades y las tablas dicen lo mismo, y falla al arrancar si no.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: America/Lima
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 25MB
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+techserv:
+  jwt:
+    secreto: ${TECHSERV_JWT_SECRETO:clave-de-desarrollo-solo-local-cambiar-en-produccion-0123456789}
+    horas: ${TECHSERV_JWT_HORAS:12}
+  token-accion:
+    horas: ${TECHSERV_TOKEN_ACCION_HORAS:72}
+  url-publica: ${TECHSERV_URL_PUBLICA:http://localhost:8080}
+  url-frontend: ${TECHSERV_URL_FRONTEND:http://localhost:5173}
+  subidas:
+    directorio: ${TECHSERV_SUBIDAS:../uploads}
+
+springdoc:
+  swagger-ui:
+    path: /api-docs
+
+logging:
+  level:
+    pe.techserv: DEBUG

@@ -1,0 +1,5 @@
+fecha:   2026-09-15T15:38:03-05:00
+agy:     1.2.2
+esfuerzo: high   timeout: 20m
+modelos: gemini-3.8-flash-high gemini-3.7-flash-high
+brief:   /home/b3/Escritorio/TECHSERV/disenio/briefs/01-panel-mype.md
