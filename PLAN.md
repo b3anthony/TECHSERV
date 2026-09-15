@@ -167,12 +167,23 @@ enlazado desde el inventario de otro taller), ya corregido. El catálogo devuelv
 Hibernate arranca con `ddl-auto: validate`: si una entidad y su tabla dejan de
 decir lo mismo, la aplicación no levanta.
 
-### Fase 2 · Autenticación y multi-inquilino
+### Fase 2 · Autenticación y multi-inquilino — ✅ hecha (15 set)
 Registro doble (`/registro/cliente`, `/registro/negocio`), login único, JWT con
 rol, filtro de seguridad, y el guardián de `mype_id` que impide que un admin lea
 órdenes de otro taller.
-**Se comprueba:** una prueba de integración donde el admin de la MYPE A pide una
-orden de la MYPE B y recibe 404, no 403 — no se confirma ni que existe.
+**Comprobado:** `AislamientoEntreMypesTest`, 7 pruebas contra un PostgreSQL real
+en Testcontainers con la semilla puesta. El admin de Servicios Delgado pide
+`ORD-0133`, que es de TecnoHogar, y recibe **404** — no 403, que diría "existe
+pero no es tuya" y permitiría contar las órdenes de la competencia probando ids.
+También: la bandeja no mezcla talleres, sin token da 401, un cliente con sesión
+válida da 403 en el panel, y **el login da el mismo mensaje con la clave mala que
+con un correo que no existe**, para que el formulario no sirva de lista de quién
+tiene cuenta.
+
+Y la prueba se verificó al revés: cambiando `findByIdAndMypeId` por `findById`
+—el fallo clásico del multi-inquilino— se pone roja con
+`Status expected:<404> but was:<200>`. Una prueba que nunca ha estado roja no
+demuestra nada.
 
 ### Fase 3 · Catálogo público
 Listado de especialidades y de MYPEs con tarifa base, calificación promedio y
