@@ -185,21 +185,35 @@ Y la prueba se verificó al revés: cambiando `findByIdAndMypeId` por `findById`
 `Status expected:<404> but was:<200>`. Una prueba que nunca ha estado roja no
 demuestra nada.
 
-### Fase 3 · Catálogo público
+### Fase 3 · Catálogo público — ✅ hecha (15 set)
 Listado de especialidades y de MYPEs con tarifa base, calificación promedio y
 número de servicios. Filtro por especialidad y por distrito.
-**Se comprueba:** la calificación promedio sale de las calificaciones reales, no
-de una columna que alguien actualizó a mano.
+**Comprobado:** `/api/catalogo/mypes?especialidad=…` devuelve para Servicios
+Delgado `promedio: 4.8` y `servicios: 126` salidos de un `AVG` y un `COUNT` sobre
+la tabla `calificacion`. No existe columna de calificación en `mype`, así que no
+hay nada que se pueda quedar desactualizado. Se ve **sin iniciar sesión**: obligar
+a registrarse antes de enseñar el precio es la forma más rápida de perder a quien
+tiene la lavadora rota y prisa.
 
-### Fase 4 · Reserva de la orden (rol Cliente)
+### Fase 4 · Reserva de la orden (rol Cliente) — ✅ hecha (15 set)
 Formulario completo, subida de fotos con validación de tipo y tamaño, elección de
 fecha y hora contra las franjas ocupadas del taller, creación de la orden en
 `PENDIENTE` y su código legible (`ORD-0142`).
-**Se comprueba:** el aforo de una franja es el número de técnicos activos del
-taller, no uno. Con dos técnicos, la tercera reserva de las 10:00 no entra y el
-error se lee en la interfaz. *(Corregido respecto a la primera versión de este
-plan, que decía "la segunda no entra": un taller con tres técnicos puede atender
-tres visitas a la misma hora, y prohibirlo habría sido modelar mal el negocio.)*
+**Comprobado:** `ReservaTest`, 7 pruebas. Servicios Delgado tiene 2 técnicos
+disponibles: las dos primeras reservas de las 10:00 entran, la **tercera da 409**
+y la agenda ya marcaba esa franja como `disponible: false` con `cuposLibres: 0`.
+También: especialidad que el taller no atiende → 400; hora fuera de franja → 400;
+fecha pasada → 400 con el error en el campo `fecha`; y la orden de otro cliente
+→ 404.
+
+*(Corregido respecto a la primera versión de este plan, que decía "la segunda no
+entra": un taller con tres técnicos puede atender tres visitas a la misma hora, y
+prohibirlo habría sido modelar mal el negocio.)*
+
+El cupo se comprueba **dos veces**: al pintar la agenda y otra vez al confirmar,
+porque entre una cosa y otra puede entrar otra reserva. Y el correlativo sale de
+una secuencia de Postgres (`orden_codigo_seq`), no de un `max(codigo) + 1`, que
+bajo concurrencia se estrella contra el `UNIQUE`.
 
 ### Fase 5 · Panel de la MYPE (rol Admin)
 Bandeja con los filtros por estado, detalle de la orden, asignación de técnico con

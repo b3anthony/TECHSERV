@@ -68,10 +68,14 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
            """)
     long completadasHoy(@Param("mypeId") Long mypeId);
 
-    /** El ultimo codigo emitido, para que el siguiente sea ORD-0143 y no un UUID. */
-    @Query(value = "SELECT codigo FROM orden_servicio WHERE codigo LIKE 'ORD-0%' "
-                 + "ORDER BY codigo DESC LIMIT 1", nativeQuery = true)
-    Optional<String> ultimoCodigo();
+    /**
+     * El siguiente correlativo, sacado de una secuencia de Postgres.
+     *
+     * No es un "max(codigo) + 1": dos clientes reservando a la vez leerian el
+     * mismo maximo y uno se estrellaria contra el UNIQUE. nextval() es atomico.
+     */
+    @Query(value = "SELECT nextval('orden_codigo_seq')", nativeQuery = true)
+    long siguienteCorrelativo();
 
     interface FranjaOcupada {
         LocalTime getHora();
