@@ -145,18 +145,27 @@ cerrar órdenes ajenas. Cómo se cierra:
 Cada fase termina con algo que se puede ejecutar y comprobar. No hay fase que
 termine en "código escrito".
 
-### Fase 0 · Cimientos — *en curso*
+### Fase 0 · Cimientos — ✅ hecha (15 set)
 Repo git, `docker-compose.yml` (PostgreSQL + Mailpit), esqueleto Maven del
 backend, esqueleto Vite del frontend, `AGENTS.md` y el verificador del kit.
-**Se comprueba:** `docker compose up -d` levanta los dos servicios; `mvn -q
-spring-boot:run` arranca en :8080; `npm run dev` sirve en :5173.
+**Comprobado:** `docker compose up -d` levanta los dos servicios; el backend
+arranca en :8080 contra PostgreSQL 16.15; `npm run build` pasa. El 5432 lo ocupa
+`docentos_db`, otro proyecto vivo, así que la base escucha en el **55432**.
 
-### Fase 1 · Dominio y base de datos
+### Fase 1 · Dominio y base de datos — ✅ hecha (15 set)
 Migraciones Flyway con todo el esquema de la sección 4, entidades JPA,
 repositorios, y semilla de demostración: 3 MYPEs de Trujillo, 5 técnicos,
 4 clientes, 12 órdenes repartidas por todos los estados, calificaciones.
-**Se comprueba:** `psql` sobre la base levantada devuelve las 12 órdenes y el
-histórico coherente de cada una.
+**Comprobado**, con `docs/comprobar-fase-1.sql` — cinco consultas que no miran
+"si hay filas" sino si los datos se contradicen: las 12 órdenes recorren los 8
+estados, ningún historial tiene saltos imposibles, ninguna orden pasada de
+`PENDIENTE` se quedó sin técnico, y todo total cuadra con mano de obra más
+repuestos. **La quinta encontró un fallo real** en mi propia semilla (un repuesto
+enlazado desde el inventario de otro taller), ya corregido. El catálogo devuelve
+126/4.80, 89/4.60 y 54/4.41 **calculados** sobre 273 calificaciones.
+
+Hibernate arranca con `ddl-auto: validate`: si una entidad y su tabla dejan de
+decir lo mismo, la aplicación no levanta.
 
 ### Fase 2 · Autenticación y multi-inquilino
 Registro doble (`/registro/cliente`, `/registro/negocio`), login único, JWT con
@@ -175,8 +184,11 @@ de una columna que alguien actualizó a mano.
 Formulario completo, subida de fotos con validación de tipo y tamaño, elección de
 fecha y hora contra las franjas ocupadas del taller, creación de la orden en
 `PENDIENTE` y su código legible (`ORD-0142`).
-**Se comprueba:** dos reservas a la misma hora en el mismo taller — la segunda no
-entra, y el error se lee en la interfaz.
+**Se comprueba:** el aforo de una franja es el número de técnicos activos del
+taller, no uno. Con dos técnicos, la tercera reserva de las 10:00 no entra y el
+error se lee en la interfaz. *(Corregido respecto a la primera versión de este
+plan, que decía "la segunda no entra": un taller con tres técnicos puede atender
+tres visitas a la misma hora, y prohibirlo habría sido modelar mal el negocio.)*
 
 ### Fase 5 · Panel de la MYPE (rol Admin)
 Bandeja con los filtros por estado, detalle de la orden, asignación de técnico con
