@@ -1,9 +1,10 @@
 # TechServ — continuar aquí
 
-> Sesión del **15 set 2026**. De 11 fases, **hay 5 cerradas (0 a 4)** y las seis
-> restantes sin empezar. Todo lo cerrado está commiteado y comprobado en disco.
-> El plan completo está en [`PLAN.md`](./PLAN.md); esto es el estado y las
-> trampas, para no volver a pagarlas.
+> Sesión del **19 set 2026**. De 11 fases, **hay 9 cerradas (0 a 8)** y quedan
+> dos: portar el diseño y pulir. Todo lo cerrado está commiteado y comprobado en
+> disco, con **71 pruebas en verde**. El plan completo está en
+> [`PLAN.md`](./PLAN.md); esto es el estado y las trampas, para no volver a
+> pagarlas.
 
 ---
 
@@ -16,25 +17,25 @@
 | **2 · Auth y multi-inquilino** | ✅ | Registro doble, login JWT, y el guardián del `mypeId` con su prueba |
 | **3 · Catálogo público** | ✅ | Especialidades, talleres con promedio calculado, agenda del día |
 | **4 · Reserva del cliente** | ✅ | Crear orden, fotos, cancelar, y el aforo por franja |
-| **5 · Panel de la MYPE** | ⬜ | Falta la asignación de técnico y el ABM de personal/tarifas/repuestos |
-| **6 · Correo HTML + tokens** | ⬜ | **La pieza central del proyecto.** Ver §4 |
-| **7 · Seguimiento, pago y calificación** | ⬜ | |
-| **8 · Reportes y KPIs** | ⬜ | |
-| **9 · Portar el diseño** | ⬜ | Maqueta elegida: `gemini-3.8-flash-high` del panel |
+| **5 · Panel de la MYPE** | ✅ | Asignar técnico, técnicos con carga de hoy, ABM de personal/tarifas/repuestos |
+| **6 · Correo HTML + tokens** | ✅ | Correo al técnico, dos botones firmados, `/t/accion` de un solo uso |
+| **7 · Seguimiento, pago y calificación** | ✅ | Cierre con repuestos y mano de obra, cobro simulado, línea de tiempo, calificación |
+| **8 · Reportes y KPIs** | ✅ | `/api/panel/reportes` + `docs/kpis.sql` que reproduce cada número |
+| **9 · Portar el diseño** | ⬜ | **Lo siguiente.** Ver §4 |
 | **10 · Pulido y entrega** | ⬜ | |
 
-**El frontend está en pañales a propósito:** solo el esqueleto de Vite con los
-tokens `@theme`. Toda la interfaz llega en la Fase 9, cuando se porte la maqueta
-elegida sobre una API que ya existe.
+**El frontend sigue en pañales**: `frontend/src` son tres archivos (`App.tsx`,
+`main.tsx`, `index.css`). Toda la interfaz llega en la Fase 9, sobre una API que
+ya está completa.
 
 ### Commits
 
 ```
-e0f89f7  Fases 3 y 4: catalogo publico y reserva del cliente
-4927a11  Fase 2: autenticacion y aislamiento entre talleres
-defacec  Fase 1: dominio, esquema y semilla de TechServ
-590a906  Maqueta 3.7 del panel: version final del brazo
-5a7b701  Fase 0: cimientos de TechServ
+64a2b7d  Fase 8: reportes y KPIs del taller, con su SQL de comprobacion
+f2412a4  Fase 7: cierre de la orden, cobro simulado, seguimiento y calificacion
+1318d7b  Fase 6: correo HTML del tecnico y tokens de accion de un solo uso
+54184c9  Fase 5: panel de la MYPE, asignacion de tecnico y ABM
+1ee65bd  Arregla la suite completa y deja el registro de donde se quedo
 ```
 
 ---
@@ -58,6 +59,10 @@ cd frontend && npm run dev                    # :5173, con proxy /api al backend
 | Técnico (no inicia sesión) | `luis.ramirez@serviciosdelgado.pe` |
 
 Comprobar la base: `docker exec -i techserv-db psql -U techserv -d techserv -q -f - < docs/comprobar-fase-1.sql`
+Comprobar los KPIs: `docker exec -i techserv-db psql -U techserv -d techserv -q -f - < docs/kpis.sql`
+
+**Ojo:** `ORD-0142` quedó en `CONFIRMADA` en la base de desarrollo por la prueba
+manual del correo del 19 set. No es un fallo; si molesta, se recrea la base.
 
 ---
 
@@ -66,83 +71,73 @@ Comprobar la base: `docker exec -i techserv-db psql -U techserv -d techserv -q -
 1. **El 5432 lo ocupa `docentos_db`**, otro proyecto vivo del usuario. TechServ
    escucha en el **55432**. No parar ese contenedor.
 
-2. **Testcontainers con `@Container` rompe la suite completa.** Cada clase pasaba
-   en verde por separado y juntas daban **5 fallos y 2 errores**: JUnit para el
-   contenedor al acabar cada clase, pero Spring cachea el contexto y la siguiente
-   clase se encuentra el DataSource apuntando a una base apagada
-   (`Could not open JPA EntityManager`, tras 30 s colgado en el pool). La solución
-   es arrancarlo en un bloque `static` y quitar `@Testcontainers`. **Se nota en el
-   reloj:** la segunda clase pasó de **220 s a 0,861 s**.
+2. **Testcontainers con `@Container` rompe la suite completa.** El contenedor se
+   arranca en un bloque `static` en `BasePruebaIntegracion` a propósito. Medido:
+   la segunda clase pasó de **220 s a 0,861 s**.
 
-3. **Una prueba que nunca ha estado roja no demuestra nada.** El test del
-   multi-inquilino se verificó al revés: cambiando `findByIdAndMypeId` por
-   `findById` se pone roja con `expected:<404> but was:<200>`. Hacer esto con cada
-   prueba que proteja algo importante.
+3. **Una prueba que nunca ha estado roja no demuestra nada.** Cada guardián de
+   esta sesión se verificó al revés, y todos se pusieron rojos:
+   `findByIdAndMypeId → findById` da `expected:<404> but was:<200>`; anular el
+   uso único del token deja el historial con **5 filas en vez de 4**; quitar el
+   filtro por taller de la consulta de ingresos tumba **dos** pruebas.
 
-4. **La comprobación de la Fase 1 encontró un fallo mío, no del agente.** Un
-   repuesto enlazado desde el inventario de otro taller hacía que el total de
-   ORD-0133 no cuadrase. Las consultas de `docs/comprobar-fase-1.sql` buscan
-   **contradicciones**, no filas; por eso sirvieron.
+4. **Las clases de prueba comparten la misma base, y se pisan.** Esto costó tres
+   fallos en una sola sesión (19 set), todos con la misma forma: una clase
+   afirmaba algo sobre el estado global —"la primera orden ASIGNADA", "Delgado
+   tiene 3 técnicos", "la semilla deja 2 técnicos disponibles"— y otra clase se
+   lo cambiaba. **Cada prueba fabrica su propia condición de partida** y jamás
+   fija totales absolutos de la semilla. Corolario operativo: **después de
+   aplicar cualquier diff, correr la suite ENTERA**, nunca solo la clase tocada;
+   cada brazo trabaja aislado y no puede ver esta interacción.
 
-5. **Los brazos de agy siguen escribiendo después de que aparezca el archivo.**
-   Audité las maquetas y los tamaños cambiaron luego (3.8 del panel: 83.649 B en
-   mi medición, 79.676 B al final). **Esperar al resumen del script antes de
-   auditar**, no a que exista el `index.html`.
+5. **Flyway ya aplicó V1, V2 y V3.** Editarlas rompe el checksum. Para cambiar la
+   semilla hay que añadir una V4, o recrear la base:
+   `docker exec -i techserv-db psql -U techserv -d postgres -c "DROP DATABASE techserv WITH (FORCE);" -c "CREATE DATABASE techserv OWNER techserv;"`
 
-6. **Los logs de los brazos salieron en 0 bytes** aunque el `index.html` sí se
-   escribió. No es el fallo silencioso del 14 sep: ahí no había archivo. Mirar
-   siempre el archivo, no el log.
+6. **El informe del brazo no es prueba, y esta sesión lo demostró dos veces.**
+   Un brazo (`gemini-3.1-pro-high`) borró el filtro `WHERE p.orden.mype.id` de
+   una consulta que ya existía y funcionaba: su reporte de ingresos sumaba la
+   facturación de **todos** los talleres. Su propia prueba lo cazaba, pero su log
+   entero eran 77 bytes de `error: There was a network issue`, así que nunca lo
+   vio. Lo que lo detectó fue correr `mvn test` en su worktree.
 
-7. **Flyway ya aplicó V1 y V2 en la base de desarrollo.** Editarlas rompe el
-   checksum. Para cambiar la semilla ahora hay que añadir una V4, o recrear la
-   base: `docker exec -i techserv-db psql -U techserv -d postgres -c "DROP DATABASE techserv WITH (FORCE);" -c "CREATE DATABASE techserv OWNER techserv;"`
+7. **Los logs de los brazos salen vacíos o truncados.** Mirar los archivos en
+   disco, no el log.
 
 ---
 
-## 4. Lo primero al retomar: Fases 5 y 6
+## 4. Lo primero al retomar: Fase 9
 
-Son las dos que hay que hacer seguidas, porque la 5 termina justo donde empieza
-la 6: el administrador pulsa **"Asignar y enviar correo al técnico"**.
+Portar el diseño a React de verdad. Las dos maquetas están **elegidas y
+auditadas**, y lo que hay que quitarles y ponerles está en
+[`disenio/ELEGIDAS.md`](./disenio/ELEGIDAS.md):
 
-### Fase 5 · Panel de la MYPE
+| Pantalla | Maqueta | Dónde |
+|---|---|---|
+| Panel de la MYPE | `gemini-3.8-flash-high` | `disenio/maquetas-panel/` |
+| Portal del cliente | **Orca** (rehecha desde cero el 19 set) | `disenio/maquetas-portal/orca/`, con 17 capturas |
 
-Ya existen `ServicioPanel` (bandeja, detalle, indicadores) y `ControladorPanel`.
-Falta:
+Las reglas del porte, que no son negociables:
 
-- `POST /api/panel/ordenes/{id}/asignar` con el `tecnicoId` — valida que el
-  técnico sea **de ese taller** (`findByIdAndMypeId`, no `findById`) y que atienda
-  esa especialidad, pasa la orden a `ASIGNADA` y dispara el correo.
-- `GET /api/panel/tecnicos` con la carga de hoy: el repositorio ya tiene
-  `cargaDeHoy(mypeId)` sin usar.
-- ABM de técnicos, tarifas y repuestos.
+- **Los datos salen de la API**, no del HTML de la maqueta.
+- **Todo color pasa por los tokens `@theme`** de `frontend/src/index.css`. La
+  línea base del verificador es **0 hex y 0 clases de paleta Tailwind**;
+  cualquiera que entre pone rojo a `scripts/verificar-diseno.sh`.
+- Foco visible y `prefers-reduced-motion` no se pierden al portar.
 
-### Fase 6 · El correo del técnico — la pieza delicada
+**La API que hay debajo ya está completa.** Las rutas que el frontend necesita:
 
-Todo el andamiaje está escrito y **sin usar todavía**:
-
-| Ya existe | Dónde |
-|---|---|
-| `AccionTecnico` con `desde`/`hasta` por acción | `seguridad/AccionTecnico.java` |
-| `AccionToken` (tabla + entidad) con `jti` y `usadoEn` | `seguridad/AccionToken.java` |
-| `ServicioJwt.paraAccion(...)` y `leerAccion(...)` | `seguridad/ServicioJwt.java` |
-| La ruta `/t/**` abierta sin sesión | `ConfiguracionSeguridad.java` |
-| Mailpit escuchando en `localhost:1025` | `docker-compose.yml` |
-
-Falta escribir: la plantilla Thymeleaf del correo (tablas y estilos en línea,
-porque es un correo), el servicio que lo envía, y el controlador
-`GET /t/accion?token=…` que valida y aplica la transición.
-
-**Las cuatro comprobaciones que tiene que pasar**, y que valen como prueba de la
-fase:
-
-1. Token válido → cambia el estado y muestra la página de confirmación.
-2. **El mismo token otra vez → no hace nada** y dice que la acción ya se
-   registró. (Es lo que aporta la tabla `accion_token`: un JWT solo, por bien
-   firmado que esté, no se puede invalidar antes de que caduque.)
-3. Token caducado, token manipulado y token de otra orden → **la misma página de
-   error**, sin decir cuál de los tres fue.
-4. Token de acción usado como token de sesión en la cabecera `Authorization` →
-   no autentica. El claim `tipo` ya lo separa; hay que probarlo.
+```
+público      GET  /api/catalogo/**
+cliente      POST /api/mis-ordenes · /{id}/fotos · /{id}/cancelar
+             GET  /api/mis-ordenes · /{id} · /{id}/seguimiento · /{id}/calificacion
+             POST /api/mis-ordenes/{id}/calificacion
+panel        GET  /api/panel/ordenes · /{id} · /indicadores · /tecnicos · /tarifas
+                  /repuestos · /reportes
+             POST /api/panel/ordenes/{id}/asignar · /en-proceso · /cerrar · /pago
+             POST/PATCH/DELETE  /api/panel/tecnicos · /tarifas · /repuestos
+técnico      GET  /t/accion?token=…   (sin sesión, token de un solo uso)
+```
 
 ---
 
@@ -154,14 +149,27 @@ fase:
 
 ---
 
-## 6. Diseño: qué queda pendiente
+## 6. Quién hizo qué, y qué se aprendió de los brazos (19 set)
 
-- **Panel de la MYPE: elegido `gemini-3.8-flash-high`.** Qué quitarle y ponerle
-  al portarlo está en [`disenio/ELEGIDAS.md`](./disenio/ELEGIDAS.md).
-- **Portal del cliente: sin elegir.** Las dos maquetas están en
-  `disenio/maquetas-portal/`. Las dos pasaron la auditoría (11/11 literales, 0
-  datos inventados); 3.8 va por delante en `aria-` (52 contra 26) y en horas
-  deshabilitadas de verdad (8 contra 5).
-- La línea base del verificador es **0 hex y 0 clases de paleta Tailwind**: al
-  portar, todo color pasa por los tokens `@theme` de `frontend/src/index.css` o
-  `scripts/verificar-diseno.sh` se pone rojo.
+Las fases 5 a 8 las **escribieron los brazos**; yo orquesté, auditué y arreglé lo
+que ninguno podía ver desde su worktree.
+
+| Brazo | Resultado |
+|---|---|
+| `gemini-3.8-flash-high` | **Ganó las cuatro tareas.** Es el que se queda para implementar |
+| `gemini-3.1-pro-high` | Programa bien y rápido, pero en 3 de 3 duelos perdió por lo mismo: duplicó la máquina de estados en vez de derivarla, se saltó las convenciones de nombres, y **borró un filtro de seguridad de una consulta existente**. En el arreglo de la carrera sí dio la mejor solución colateral |
+| `claude-opus-4-6` y `claude-sonnet-4-6` | Se quedaron **colgados sin cuota**, sin error, con 0 % de CPU y sockets abiertos. Trabajo perdido a la mitad |
+| **DeepSeek** (auditoría cruzada) | Encontró por su cuenta la carrera TOCTOU del token de un solo uso, con la consecuencia exacta (historial duplicado) y las cuatro defensas que no existían |
+| **Orca** | La maqueta del portal, mirándose con chromium: 17 capturas, 8 de foco |
+
+Correcciones a la documentación del taller, comprobadas en disco:
+
+- El agente de agy dentro de Orca se llama **`antigravity`**, no `agy`.
+- Orca escucha en **`127.0.0.1:6768`**, no en `0.0.0.0`.
+- Orca acepta **`--base-branch <ref>`**: no está atado a `origin/main`. Pero sigue
+  sin ver lo que no está commiteado.
+- **Orca arranca pidiendo permiso** ("¿confías en esta carpeta?") y no avanza
+  hasta que alguien contesta. Es su ventaja de seguridad y su coste operativo.
+- **El compositor en `>` sin spinner no significa "terminado"**: Orca volvió a ese
+  estado por un **error de red** a mitad del trabajo. Hay que mirar si el informe
+  existe, no solo si la pantalla está quieta.
