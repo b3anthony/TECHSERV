@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -86,5 +87,30 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
     interface FranjaOcupada {
         LocalTime getHora();
         Long getOcupadas();
+    }
+
+    @Query("""
+           SELECT os.estado AS estado, COUNT(os) AS total
+           FROM OrdenServicio os
+           WHERE os.mype.id = :mypeId
+             AND os.creadaEn BETWEEN :desde AND :hasta
+           GROUP BY os.estado
+           """)
+    List<ConteoEstado> contarPorEstadoEnPeriodo(@Param("mypeId") Long mypeId,
+                                               @Param("desde") OffsetDateTime desde,
+                                               @Param("hasta") OffsetDateTime hasta);
+
+    @Query("""
+           SELECT COUNT(os) FROM OrdenServicio os
+           WHERE os.mype.id = :mypeId
+             AND os.creadaEn BETWEEN :desde AND :hasta
+           """)
+    long ordenesCreadasEntre(@Param("mypeId") Long mypeId,
+                             @Param("desde") OffsetDateTime desde,
+                             @Param("hasta") OffsetDateTime hasta);
+
+    interface ConteoEstado {
+        EstadoOrden getEstado();
+        Long getTotal();
     }
 }
