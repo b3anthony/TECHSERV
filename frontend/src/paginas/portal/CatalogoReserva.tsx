@@ -6,6 +6,7 @@ import { useSesion } from '../../sesion/SesionProvider.tsx'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Cargando } from '../../componentes/Cargando.tsx'
 import { AvisoError } from '../../componentes/AvisoError.tsx'
+import { Vacio } from '../../componentes/Vacio.tsx'
 import type { Especialidad, OrdenDetalle } from '../../tipos.ts'
 import type {
   AgendaDia,
@@ -486,7 +487,14 @@ export function CatalogoReserva(): ReactNode {
               <AvisoError mensaje={errorEspecialidades} reintentar={recargarEspecialidades} />
             )}
 
-            {!cargandoEspecialidades && !errorEspecialidades && (
+            {!cargandoEspecialidades && !errorEspecialidades && especialidades.length === 0 && (
+              <Vacio
+                titulo="No hay especialidades disponibles"
+                detalle="En este momento no hay especialidades de atención disponibles."
+              />
+            )}
+
+            {!cargandoEspecialidades && !errorEspecialidades && especialidades.length > 0 && (
               <div
                 className="flex flex-col gap-3"
                 role="radiogroup"
@@ -704,21 +712,18 @@ export function CatalogoReserva(): ReactNode {
 
               {/* Fotos del problema (opcional) */}
               <div>
-                <span id="label-fotos" className="block text-sm font-semibold text-tinta mb-1">
+                <label
+                  htmlFor={idInputArchivos}
+                  id="label-fotos"
+                  className="block text-sm font-semibold text-tinta mb-1"
+                >
                   Fotos del problema (opcional, máximo 5 fotos de hasta 5 MB)
-                </span>
+                </label>
 
                 {/* Dropzone accesible */}
-                <div
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   onClick={() => inputArchivosRef.current?.click()}
-                  onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault()
-                      inputArchivosRef.current?.click()
-                    }
-                  }}
                   onDragOver={(e) => {
                     e.preventDefault()
                   }}
@@ -729,7 +734,7 @@ export function CatalogoReserva(): ReactNode {
                     }
                   }}
                   aria-labelledby="label-fotos texto-dropzone"
-                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-linea-fuerte bg-lienzo p-5 text-center cursor-pointer hover:border-accion hover:bg-accion-tenue transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
+                  className="w-full flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-linea-fuerte bg-lienzo p-5 text-center cursor-pointer hover:border-accion hover:bg-accion-tenue transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
                 >
                   <svg
                     className="h-6 w-6 text-tinta-suave"
@@ -745,24 +750,25 @@ export function CatalogoReserva(): ReactNode {
                       d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                     />
                   </svg>
-                  <p id="texto-dropzone" className="text-sm text-tinta-suave">
+                  <span id="texto-dropzone" className="text-sm text-tinta-suave">
                     Arrastra fotos del problema aquí o{' '}
                     <span className="font-semibold text-accion underline">elige archivos</span>
-                  </p>
-                  <input
-                    ref={inputArchivosRef}
-                    id={idInputArchivos}
-                    type="file"
-                    multiple
-                    accept="image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        agregarArchivos(e.target.files)
-                      }
-                    }}
-                  />
-                </div>
+                  </span>
+                </button>
+
+                <input
+                  ref={inputArchivosRef}
+                  id={idInputArchivos}
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      agregarArchivos(e.target.files)
+                    }
+                  }}
+                />
 
                 {errorFotos && (
                   <p role="alert" className="mt-1 text-xs text-peligro">
@@ -918,13 +924,18 @@ export function CatalogoReserva(): ReactNode {
                     </div>
                   ) : errorAgenda ? (
                     <p className="text-xs text-peligro">{errorAgenda}</p>
+                  ) : !agenda || agenda.franjas.length === 0 ? (
+                    <Vacio
+                      titulo="No hay horarios disponibles"
+                      detalle="Ese día no hay horarios disponibles. Por favor, prueba con otra fecha."
+                    />
                   ) : (
                     <div
                       className="grid grid-cols-4 gap-1.5"
                       role="radiogroup"
                       aria-labelledby="label-hora"
                     >
-                      {agenda?.franjas.map((franja) => {
+                      {agenda.franjas.map((franja) => {
                         const horaCorta = franja.hora.substring(0, 5)
                         const estaElegida = horaSeleccionada === horaCorta
                         const deshabilitada = !franja.disponible

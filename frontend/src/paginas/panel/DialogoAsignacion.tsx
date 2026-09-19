@@ -5,13 +5,8 @@ import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Cargando } from '../../componentes/Cargando.tsx'
 import type { Especialidad } from '../../tipos.ts'
+import type { EspecialidadItem } from '../portal/tiposPortal.ts'
 import type { TecnicoDisponible } from './tiposPanel.ts'
-
-const MAPA_ESPECIALIDADES: Record<Especialidad, string> = {
-  SERVICIOS_HOGAR: 'Servicios del Hogar',
-  SOPORTE_INFORMATICO: 'Soporte Informático',
-  REPARACION_ELECTRODOMESTICOS: 'Reparación de Electrodomésticos',
-}
 
 interface DialogoAsignacionProps {
   ordenId: number
@@ -49,6 +44,21 @@ export function DialogoAsignacion({
     },
     enabled: abierto,
   })
+
+  const { data: especialidadesCatalogo = [] } = useQuery<EspecialidadItem[]>({
+    queryKey: ['catalogo', 'especialidades'],
+    queryFn: async () => {
+      const res = await api.get('/catalogo/especialidades')
+      return (res.data as EspecialidadItem[]) || []
+    },
+    enabled: abierto,
+  })
+
+  function obtenerEtiquetaEspecialidad(esp: Especialidad): string {
+    if (esp === especialidadOrden) return etiquetaEspecialidad
+    const encontrada = especialidadesCatalogo.find((e) => e.clave === esp)
+    return encontrada ? encontrada.titulo : esp
+  }
 
   useEffect(() => {
     const el = dialogRef.current
@@ -185,7 +195,7 @@ export function DialogoAsignacion({
                       </div>
 
                       <p className="mt-0.5 text-xs text-tinta-media">
-                        {tec.especialidades.map((esp) => MAPA_ESPECIALIDADES[esp] || esp).join(', ')}
+                        {tec.especialidades.map((esp) => obtenerEtiquetaEspecialidad(esp)).join(', ')}
                       </p>
 
                       <p className="mt-1 text-xs text-tinta-suave">

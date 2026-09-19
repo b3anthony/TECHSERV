@@ -7,6 +7,7 @@ import { Cargando } from '../../componentes/Cargando.tsx'
 import { AvisoError } from '../../componentes/AvisoError.tsx'
 import { AreaTexto } from '../../componentes/AreaTexto.tsx'
 import { EstadoOrdenEtiqueta } from '../../componentes/EstadoOrdenEtiqueta.tsx'
+import { Vacio } from '../../componentes/Vacio.tsx'
 import type { ActorHistorial } from '../../tipos.ts'
 import type { DetalleCalificacionDatos, SeguimientoDatos } from './tiposPortal.ts'
 import { formatearFechaHora, formatearMomento } from './fechas.ts'
@@ -43,7 +44,11 @@ export function SeguimientoOrden(): ReactNode {
   const [errorCancelacion, setErrorCancelacion] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id) return
+    if (!id) {
+      setCargando(false)
+      setError('No se encontró la solicitud.')
+      return
+    }
     let montado = true
 
     api
@@ -80,7 +85,11 @@ export function SeguimientoOrden(): ReactNode {
   }, [id])
 
   const cargarDatos = useCallback(() => {
-    if (!id) return
+    if (!id) {
+      setCargando(false)
+      setError('No se encontró la solicitud.')
+      return
+    }
     setError(null)
 
     api
@@ -179,7 +188,18 @@ export function SeguimientoOrden(): ReactNode {
 
       {cargando && <Cargando />}
 
-      {error && <AvisoError mensaje={error} reintentar={recargar} />}
+      {error && (
+        <div className="flex flex-col items-start gap-4">
+          <AvisoError mensaje={error} reintentar={id ? recargar : undefined} />
+          <a
+            href="/mis-ordenes"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-accion hover:text-accion-honda underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+          >
+            <span aria-hidden="true">&larr;</span>
+            Volver a mis órdenes
+          </a>
+        </div>
+      )}
 
       {!cargando && !error && seguimiento && (
         <div className="flex flex-col gap-6">
@@ -213,14 +233,20 @@ export function SeguimientoOrden(): ReactNode {
                   Historial de la solicitud
                 </h2>
 
-                <div className="relative pl-6">
-                  {/* Línea vertical de fondo */}
-                  <div
-                    aria-hidden="true"
-                    className="absolute bottom-3 left-2 top-3 w-0.5 bg-linea"
+                {seguimiento.pasos.length === 0 ? (
+                  <Vacio
+                    titulo="Sin movimientos"
+                    detalle="Todavía no hay movimientos registrados para esta solicitud."
                   />
+                ) : (
+                  <div className="relative pl-6">
+                    {/* Línea vertical de fondo */}
+                    <div
+                      aria-hidden="true"
+                      className="absolute bottom-3 left-2 top-3 w-0.5 bg-linea"
+                    />
 
-                  <ol className="flex flex-col gap-6" aria-label="Pasos del historial">
+                    <ol className="flex flex-col gap-6" aria-label="Pasos del historial">
                     {seguimiento.pasos.map((paso, index) => {
                       const esUltimo = index === seguimiento.pasos.length - 1
                       return (
@@ -270,7 +296,8 @@ export function SeguimientoOrden(): ReactNode {
                     })}
                   </ol>
                 </div>
-              </section>
+              )}
+            </section>
 
               {/* Formulario de Calificación si puedeCalificar */}
               {seguimiento.puedeCalificar && (

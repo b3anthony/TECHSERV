@@ -30,13 +30,22 @@ export function Bandeja(): JSX.Element {
   const pagina = parseInt(searchParams.get('pagina') || '0', 10)
 
   // Indicadores
-  const { data: indicadores } = useQuery<IndicadoresPanel>({
+  const {
+    data: indicadores,
+    isLoading: cargandoIndicadores,
+    error: errorIndicadoresObj,
+    refetch: recargarIndicadores,
+  } = useQuery<IndicadoresPanel>({
     queryKey: ['panel', 'indicadores'],
     queryFn: async () => {
       const res = await api.get('/panel/indicadores')
       return res.data as IndicadoresPanel
     },
   })
+
+  const errorIndicadores = errorIndicadoresObj
+    ? mensajeDeError(errorIndicadoresObj)
+    : null
 
   // Órdenes
   const {
@@ -91,88 +100,101 @@ export function Bandeja(): JSX.Element {
       </div>
 
       {/* 4 Indicadores arriba */}
-      <section aria-label="Indicadores del día" className="mb-8">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {/* Pendientes */}
-          <button
-            type="button"
-            onClick={() => cambiarEstado('PENDIENTE')}
-            aria-label={`Ver órdenes pendientes: ${indicadores ? indicadores.pendientes : 0}`}
-            className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
-              estadoFiltro === 'PENDIENTE'
-                ? 'border-accion bg-accion-tenue'
-                : 'border-linea bg-superficie hover:border-linea-fuerte'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-pendiente" aria-hidden="true" />
-              <span className="text-xs font-semibold text-tinta-media">Pendientes</span>
-            </div>
-            <span className="mt-2 text-2xl font-bold text-tinta">
-              {indicadores ? indicadores.pendientes : '—'}
-            </span>
-          </button>
+      <section
+        aria-label="Indicadores del día"
+        aria-busy={cargandoIndicadores}
+        className="mb-8"
+      >
+        {cargandoIndicadores ? (
+          <Cargando />
+        ) : errorIndicadores ? (
+          <AvisoError
+            mensaje="No se pudieron cargar los indicadores del día."
+            reintentar={() => void recargarIndicadores()}
+          />
+        ) : indicadores ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {/* Pendientes */}
+            <button
+              type="button"
+              onClick={() => cambiarEstado('PENDIENTE')}
+              aria-label={`Ver órdenes pendientes: ${indicadores.pendientes}`}
+              className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
+                estadoFiltro === 'PENDIENTE'
+                  ? 'border-accion bg-accion-tenue'
+                  : 'border-linea bg-superficie hover:border-linea-fuerte'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-pendiente" aria-hidden="true" />
+                <span className="text-xs font-semibold text-tinta-media">Pendientes</span>
+              </div>
+              <span className="mt-2 text-2xl font-bold text-tinta">
+                {indicadores.pendientes}
+              </span>
+            </button>
 
-          {/* Asignadas */}
-          <button
-            type="button"
-            onClick={() => cambiarEstado('ASIGNADA')}
-            aria-label={`Ver órdenes asignadas: ${indicadores ? indicadores.asignadas : 0}`}
-            className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
-              estadoFiltro === 'ASIGNADA'
-                ? 'border-accion bg-accion-tenue'
-                : 'border-linea bg-superficie hover:border-linea-fuerte'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-asignada" aria-hidden="true" />
-              <span className="text-xs font-semibold text-tinta-media">Asignadas</span>
-            </div>
-            <span className="mt-2 text-2xl font-bold text-tinta">
-              {indicadores ? indicadores.asignadas : '—'}
-            </span>
-          </button>
+            {/* Asignadas */}
+            <button
+              type="button"
+              onClick={() => cambiarEstado('ASIGNADA')}
+              aria-label={`Ver órdenes asignadas: ${indicadores.asignadas}`}
+              className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
+                estadoFiltro === 'ASIGNADA'
+                  ? 'border-accion bg-accion-tenue'
+                  : 'border-linea bg-superficie hover:border-linea-fuerte'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-asignada" aria-hidden="true" />
+                <span className="text-xs font-semibold text-tinta-media">Asignadas</span>
+              </div>
+              <span className="mt-2 text-2xl font-bold text-tinta">
+                {indicadores.asignadas}
+              </span>
+            </button>
 
-          {/* En camino */}
-          <button
-            type="button"
-            onClick={() => cambiarEstado('EN_CAMINO')}
-            aria-label={`Ver órdenes en camino: ${indicadores ? indicadores.enCamino : 0}`}
-            className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
-              estadoFiltro === 'EN_CAMINO'
-                ? 'border-accion bg-accion-tenue'
-                : 'border-linea bg-superficie hover:border-linea-fuerte'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-camino" aria-hidden="true" />
-              <span className="text-xs font-semibold text-tinta-media">En camino</span>
-            </div>
-            <span className="mt-2 text-2xl font-bold text-tinta">
-              {indicadores ? indicadores.enCamino : '—'}
-            </span>
-          </button>
+            {/* En camino */}
+            <button
+              type="button"
+              onClick={() => cambiarEstado('EN_CAMINO')}
+              aria-label={`Ver órdenes en camino: ${indicadores.enCamino}`}
+              className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
+                estadoFiltro === 'EN_CAMINO'
+                  ? 'border-accion bg-accion-tenue'
+                  : 'border-linea bg-superficie hover:border-linea-fuerte'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-camino" aria-hidden="true" />
+                <span className="text-xs font-semibold text-tinta-media">En camino</span>
+              </div>
+              <span className="mt-2 text-2xl font-bold text-tinta">
+                {indicadores.enCamino}
+              </span>
+            </button>
 
-          {/* Completadas hoy */}
-          <button
-            type="button"
-            onClick={() => cambiarEstado('COMPLETADA')}
-            aria-label={`Ver órdenes completadas hoy: ${indicadores ? indicadores.completadasHoy : 0}`}
-            className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
-              estadoFiltro === 'COMPLETADA'
-                ? 'border-accion bg-accion-tenue'
-                : 'border-linea bg-superficie hover:border-linea-fuerte'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-completada" aria-hidden="true" />
-              <span className="text-xs font-semibold text-tinta-media">Completadas hoy</span>
-            </div>
-            <span className="mt-2 text-2xl font-bold text-tinta">
-              {indicadores ? indicadores.completadasHoy : '—'}
-            </span>
-          </button>
-        </div>
+            {/* Completadas hoy */}
+            <button
+              type="button"
+              onClick={() => cambiarEstado('COMPLETADA')}
+              aria-label={`Ver órdenes completadas hoy: ${indicadores.completadasHoy}`}
+              className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
+                estadoFiltro === 'COMPLETADA'
+                  ? 'border-accion bg-accion-tenue'
+                  : 'border-linea bg-superficie hover:border-linea-fuerte'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-completada" aria-hidden="true" />
+                <span className="text-xs font-semibold text-tinta-media">Completadas hoy</span>
+              </div>
+              <span className="mt-2 text-2xl font-bold text-tinta">
+                {indicadores.completadasHoy}
+              </span>
+            </button>
+          </div>
+        ) : null}
       </section>
 
       {/* Pestañas de filtro por estado */}

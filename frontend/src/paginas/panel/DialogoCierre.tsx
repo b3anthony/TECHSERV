@@ -5,6 +5,7 @@ import { api, mensajeDeError } from '../../api/cliente.ts'
 import { AreaTexto } from '../../componentes/AreaTexto.tsx'
 import { Boton } from '../../componentes/Boton.tsx'
 import { Campo } from '../../componentes/Campo.tsx'
+import { Cargando } from '../../componentes/Cargando.tsx'
 import type { RepuestoCatalogo } from './tiposPanel.ts'
 
 interface FilaRepuesto {
@@ -36,7 +37,11 @@ export function DialogoCierre({
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
   const [errores, setErrores] = useState<Record<string, string>>({})
 
-  const { data: catalogoRepuestos = [], error: errorRepuestos } = useQuery<RepuestoCatalogo[]>({
+  const {
+    data: catalogoRepuestos = [],
+    error: errorRepuestos,
+    isLoading: cargandoRepuestos,
+  } = useQuery<RepuestoCatalogo[]>({
     queryKey: ['panel', 'repuestos'],
     queryFn: async () => {
       const res = await api.get('/panel/repuestos')
@@ -224,14 +229,22 @@ export function DialogoCierre({
               type="button"
               variante="secundario"
               onClick={agregarFila}
-              disabled={cerrando}
+              disabled={cerrando || cargandoRepuestos || catalogoRepuestos.length === 0}
               className="text-xs py-1 px-3"
             >
               + Añadir repuesto
             </Boton>
           </div>
 
-          {repuestosFilas.length === 0 ? (
+          {cargandoRepuestos ? (
+            <div className="mt-3">
+              <Cargando />
+            </div>
+          ) : catalogoRepuestos.length === 0 ? (
+            <div className="mt-3 rounded-lg border border-linea bg-superficie-suave p-3 text-xs text-tinta-suave">
+              El taller no tiene repuestos activos en el catálogo. Puedes cerrar la orden registrando únicamente la mano de obra.
+            </div>
+          ) : repuestosFilas.length === 0 ? (
             <p className="mt-3 text-xs italic text-tinta-suave">
               No se han agregado repuestos para esta orden.
             </p>
