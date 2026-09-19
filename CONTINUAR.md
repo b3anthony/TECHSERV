@@ -1,10 +1,16 @@
 # TechServ — continuar aquí
 
-> Sesión del **19 set 2026**. De 11 fases, **hay 9 cerradas (0 a 8)** y quedan
-> dos: portar el diseño y pulir. Todo lo cerrado está commiteado y comprobado en
-> disco, con **71 pruebas en verde**. El plan completo está en
-> [`PLAN.md`](./PLAN.md); esto es el estado y las trampas, para no volver a
-> pagarlas.
+> Sesión del **19 set 2026**. **Las 11 fases están cerradas.** Backend con
+> **71 pruebas en verde**, frontend completo con el verificador en exit 0, y el
+> proyecto se levanta y se navega. El plan está en [`PLAN.md`](./PLAN.md), el
+> arranque en [`README.md`](./README.md) y la demostración en
+> [`docs/guion-demo.md`](./docs/guion-demo.md); esto es el estado y las trampas,
+> para no volver a pagarlas.
+>
+> **Quién escribe qué a partir de ahora:** `gemini-3.8-flash-high` programa,
+> **DeepSeek audita** lo escrito, **Orca** mira las pantallas, y yo oriento,
+> diagnostico, fusiono y compruebo. La tabla con los números está en
+> `~/taller/vigente/ruteo.md`.
 
 ---
 
@@ -21,16 +27,19 @@
 | **6 · Correo HTML + tokens** | ✅ | Correo al técnico, dos botones firmados, `/t/accion` de un solo uso |
 | **7 · Seguimiento, pago y calificación** | ✅ | Cierre con repuestos y mano de obra, cobro simulado, línea de tiempo, calificación |
 | **8 · Reportes y KPIs** | ✅ | `/api/panel/reportes` + `docs/kpis.sql` que reproduce cada número |
-| **9 · Portar el diseño** | ⬜ | **Lo siguiente.** Ver §4 |
-| **10 · Pulido y entrega** | ⬜ | |
+| **9 · Portar el diseño** | ✅ | Las dos maquetas en React: panel y portal, con los tokens `@theme` y el verificador en verde |
+| **10 · Pulido y entrega** | ✅ | README, guion de demo de 5 min, estados de carga/error/vacío, y la pasada de móvil de Orca |
 
-**El frontend sigue en pañales**: `frontend/src` son tres archivos (`App.tsx`,
-`main.tsx`, `index.css`). Toda la interfaz llega en la Fase 9, sobre una API que
-ya está completa.
+**El frontend ya existe**: 32 archivos bajo `frontend/src`, con las dos pantallas
+portadas de sus maquetas, **0 hex sueltos y 0 clases de la paleta de Tailwind**.
+Todo color pasa por los tokens `@theme` de `index.css`.
 
 ### Commits
 
 ```
+625a99d  Fase 10: pasada de movil de Orca, auditada
+57a8ca5  Fase 10: README, guion de demostracion y cierre de los huecos de estado
+c0ff673  Fase 9: el frontend real, portando las dos maquetas elegidas
 64a2b7d  Fase 8: reportes y KPIs del taller, con su SQL de comprobacion
 f2412a4  Fase 7: cierre de la orden, cobro simulado, seguimiento y calificacion
 1318d7b  Fase 6: correo HTML del tecnico y tokens de accion de un solo uso
@@ -106,26 +115,34 @@ manual del correo del 19 set. No es un fallo; si molesta, se recrea la base.
 
 ---
 
-## 4. Lo primero al retomar: Fase 9
+## 4. El plan está terminado. Qué haría yo si esto sigue
 
-Portar el diseño a React de verdad. Las dos maquetas están **elegidas y
-auditadas**, y lo que hay que quitarles y ponerles está en
-[`disenio/ELEGIDAS.md`](./disenio/ELEGIDAS.md):
+Las 11 fases están cerradas, así que lo que viene ya no es "la siguiente fase"
+sino decisiones tuyas. Lo que está **abierto de verdad**, por orden de lo que más
+aporta:
 
-| Pantalla | Maqueta | Dónde |
-|---|---|---|
-| Panel de la MYPE | `gemini-3.8-flash-high` | `disenio/maquetas-panel/` |
-| Portal del cliente | **Orca** (rehecha desde cero el 19 set) | `disenio/maquetas-portal/orca/`, con 17 capturas |
+| Pendiente | Por qué |
+|---|---|
+| **Pantallas del ABM y de reportes** | La API existe entera (`/api/panel/tecnicos`, `/tarifas`, `/repuestos`, `/reportes`) pero **no tienen interfaz**: hoy el taller da de alta un técnico por la API, no por la web |
+| **Pruebas del frontend** | El verificador mide color y foco, no comportamiento. Hoy hay **0 archivos de prueba** en `frontend/`, y el propio verificador lo recuerda al terminar |
+| **La carrera del `/t/accion`, en el resto de escrituras** | Se cerró con un `UPDATE` condicional en el token. Conviene mirar si cerrar una orden dos veces a la vez tiene el mismo hueco |
+| **Vaciar las huellas de las pruebas** | La base de desarrollo lleva técnicos y repuestos creados por las pruebas del ABM, y `ORD-0142` en `CONFIRMADA` |
 
-Las reglas del porte, que no son negociables:
+### Al tocar el frontend, esto no se negocia
 
-- **Los datos salen de la API**, no del HTML de la maqueta.
+- **Los datos salen de la API**, no escritos en el componente.
 - **Todo color pasa por los tokens `@theme`** de `frontend/src/index.css`. La
-  línea base del verificador es **0 hex y 0 clases de paleta Tailwind**;
-  cualquiera que entre pone rojo a `scripts/verificar-diseno.sh`.
-- Foco visible y `prefers-reduced-motion` no se pierden al portar.
+  línea base es **0 hex y 0 clases de paleta Tailwind**; cualquiera que entre
+  pone rojo a `scripts/verificar-diseno.sh`. **Y hay que hacer `git add` antes de
+  ejecutarlo**, o no mira los archivos nuevos.
+- Foco visible y `prefers-reduced-motion` no se pierden.
+- **Abre la pantalla y mírala.** `scripts/capturar-pantalla.mjs <ruta> <salida.png>
+  [correo] [ancho] [alto]` hace login de verdad y captura la pantalla
+  autenticada. Compilar no demuestra que una pantalla se pinte: el 19 set, dos
+  fallos pasaron `tsc`, el verificador y el informe del brazo, y solo salieron
+  al abrir el navegador.
 
-**La API que hay debajo ya está completa.** Las rutas que el frontend necesita:
+**La API completa**, para referencia:
 
 ```
 público      GET  /api/catalogo/**
@@ -151,8 +168,13 @@ técnico      GET  /t/accion?token=…   (sin sesión, token de un solo uso)
 
 ## 6. Quién hizo qué, y qué se aprendió de los brazos (19 set)
 
-Las fases 5 a 8 las **escribieron los brazos**; yo orquesté, auditué y arreglé lo
-que ninguno podía ver desde su worktree.
+Las fases 5 a 10 —**seis fases enteras**— las escribieron los brazos; yo orienté,
+audité, fusioné y arreglé lo que ninguno podía ver desde su worktree. El detalle
+medido está en `~/taller/bitacora/2026-09-19-techserv-fases-5-a-10.md`.
+
+**El reparto que queda fijado:** `gemini-3.8-flash-high` escribe el código,
+**DeepSeek audita** lo ya escrito cruzando familia de modelo, **Orca** mira las
+pantallas en un navegador, y yo diagnostico, fusiono y compruebo.
 
 | Brazo | Resultado |
 |---|---|
