@@ -27,7 +27,7 @@ export function Registro(): ReactNode {
           role="tab"
           aria-selected={pestana === 'cliente'}
           onClick={() => setPestana('cliente')}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${pestana === 'cliente' ? 'bg-superficie text-tinta shadow-sm' : 'text-tinta-suave'}`}
+          className={`flex-1 min-h-[44px] inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${pestana === 'cliente' ? 'bg-superficie text-tinta shadow-sm' : 'text-tinta-suave'}`}
         >
           Cliente
         </button>
@@ -35,7 +35,7 @@ export function Registro(): ReactNode {
           role="tab"
           aria-selected={pestana === 'negocio'}
           onClick={() => setPestana('negocio')}
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${pestana === 'negocio' ? 'bg-superficie text-tinta shadow-sm' : 'text-tinta-suave'}`}
+          className={`flex-1 min-h-[44px] inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${pestana === 'negocio' ? 'bg-superficie text-tinta shadow-sm' : 'text-tinta-suave'}`}
         >
           Negocio
         </button>
@@ -47,7 +47,7 @@ export function Registro(): ReactNode {
         ¿Ya tienes cuenta?{' '}
         <a
           href="/entrar"
-          className="font-semibold text-accion underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+          className="inline-block py-2 px-1 font-semibold text-accion underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo rounded"
         >
           Inicia sesión
         </a>
@@ -371,37 +371,39 @@ function FormularioNegocio(): ReactNode {
         <legend className="text-sm font-medium text-tinta">Especialidades y tarifas</legend>
 
         {especialidades.map((esp, i) => (
-          <div key={i} className="flex items-end gap-3 rounded-lg border border-linea bg-superficie-suave p-3">
+          <div key={i} className="flex flex-col sm:flex-row sm:items-end gap-3 rounded-lg border border-linea bg-superficie-suave p-3">
             <Selector
               etiqueta="Especialidad"
               value={esp.especialidad}
               onChange={(e) => actualizarEspecialidad(i, 'especialidad', e.target.value)}
-              className="flex-1"
+              className="flex-1 min-w-0"
             >
               <option value="SERVICIOS_HOGAR">Servicios del hogar</option>
               <option value="SOPORTE_INFORMATICO">Soporte técnico e informático</option>
               <option value="REPARACION_ELECTRODOMESTICOS">Reparación de electrodomésticos</option>
             </Selector>
 
-            <Campo
-              etiqueta="Tarifa base (S/)"
-              type="number"
-              min="1"
-              step="0.01"
-              value={esp.tarifaBase}
-              onChange={(e) => actualizarEspecialidad(i, 'tarifaBase', e.target.value)}
-              className="w-32"
-            />
+            <div className="flex items-end gap-3">
+              <Campo
+                etiqueta="Tarifa base (S/)"
+                type="number"
+                min="1"
+                step="0.01"
+                value={esp.tarifaBase}
+                onChange={(e) => actualizarEspecialidad(i, 'tarifaBase', e.target.value)}
+                className="w-32 flex-1 sm:flex-none"
+              />
 
-            {especialidades.length > 1 && (
-              <button
-                type="button"
-                onClick={() => quitarEspecialidad(i)}
-                className="mb-0.5 rounded-md px-2 py-2 text-xs text-peligro hover:bg-superficie focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
-              >
-                Quitar
-              </button>
-            )}
+              {especialidades.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => quitarEspecialidad(i)}
+                  className="mb-0.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md px-3 py-2 text-xs font-medium text-peligro hover:bg-superficie focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+                >
+                  Quitar
+                </button>
+              )}
+            </div>
           </div>
         ))}
 

@@ -90,7 +90,7 @@ export function Entrar(): ReactNode {
         ¿No tienes cuenta?{' '}
         <a
           href="/registro"
-          className="font-semibold text-accion underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+          className="inline-block py-2 px-1 font-semibold text-accion underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo rounded"
         >
           Regístrate
         </a>

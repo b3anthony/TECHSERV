@@ -199,7 +199,7 @@ export function Bandeja(): JSX.Element {
 
       {/* Pestañas de filtro por estado */}
       <section aria-label="Filtro de órdenes" className="mb-6 border-b border-linea">
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Estados de órdenes">
+        <div className="flex items-center gap-2 overflow-x-auto pb-px sm:flex-wrap" role="tablist" aria-label="Estados de órdenes">
           {PESTANAS.map((tab) => {
             const esActivo = estadoFiltro === tab.valor
             return (
@@ -209,7 +209,7 @@ export function Bandeja(): JSX.Element {
                 role="tab"
                 aria-selected={esActivo}
                 onClick={() => cambiarEstado(tab.valor)}
-                className={`border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${
+                className={`shrink-0 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo min-h-[44px] inline-flex items-center ${
                   esActivo
                     ? 'border-accion text-accion'
                     : 'border-transparent text-tinta-suave hover:border-linea-fuerte hover:text-tinta'
@@ -238,8 +238,65 @@ export function Bandeja(): JSX.Element {
         />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-linea bg-superficie shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-tinta">
+          {/* Vista móvil: tarjetas apiladas */}
+          <div className="divide-y divide-linea sm:hidden">
+            {ordenes.map((orden) => (
+              <article key={orden.id} className="p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to={`/panel/ordenes/${orden.id}`}
+                    className="font-mono text-base font-bold text-accion hover:underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie rounded min-h-[44px] inline-flex items-center"
+                  >
+                    {orden.codigo}
+                  </Link>
+                  <EstadoOrdenEtiqueta
+                    estado={orden.estado}
+                    etiqueta={orden.etiquetaEstado}
+                  />
+                </div>
+
+                <div className="text-sm">
+                  <div className="font-semibold text-tinta">{orden.clienteNombre}</div>
+                  <div className="text-xs text-tinta-suave">{orden.distrito}</div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-tinta-media">
+                  <span className="rounded-md border border-linea bg-superficie-suave px-2 py-0.5 font-medium">
+                    {orden.etiquetaEspecialidad}
+                  </span>
+                  <span>
+                    {orden.fechaProgramada || '—'}{' '}
+                    {orden.horaProgramada ? orden.horaProgramada.substring(0, 5) : ''}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-linea/60">
+                  <div className="text-xs">
+                    <span className="text-tinta-suave">Técnico: </span>
+                    {orden.tecnicoNombre ? (
+                      <span className="font-semibold text-tinta">{orden.tecnicoNombre}</span>
+                    ) : (
+                      <span className="italic text-tinta-suave">Sin asignar</span>
+                    )}
+                  </div>
+
+                  <Link
+                    to={`/panel/ordenes/${orden.id}`}
+                    className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 font-semibold text-xs text-accion hover:underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie rounded-lg"
+                  >
+                    {orden.estado === 'PENDIENTE' ? 'Asignar técnico' : 'Ver detalle'}
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Vista escritorio: tabla con desplazamiento horizontal interno */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-xs text-tinta">
               <thead className="border-b border-linea bg-superficie-suave font-bold text-tinta-media">
                 <tr>
                   <th scope="col" className="px-4 py-3">Código</th>
@@ -294,7 +351,7 @@ export function Bandeja(): JSX.Element {
                     <td className="px-4 py-3 text-right">
                       <Link
                         to={`/panel/ordenes/${orden.id}`}
-                        className="inline-flex items-center gap-1 font-semibold text-accion hover:underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie rounded"
+                        className="inline-flex min-h-[36px] items-center gap-1 font-semibold text-accion hover:underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie rounded px-2 py-1"
                       >
                         {orden.estado === 'PENDIENTE' ? 'Asignar técnico' : 'Ver detalle'}
                         <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -309,19 +366,20 @@ export function Bandeja(): JSX.Element {
           </div>
 
           {/* Paginación */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-linea px-4 py-3">
-            <span className="text-xs text-tinta-suave">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-linea px-4 py-3">
+            <span className="text-xs text-tinta-suave text-center sm:text-left">
               Página <span className="font-semibold text-tinta">{pagina + 1}</span> de{' '}
               <span className="font-semibold text-tinta">{totalPaginas || 1}</span> ({totalElementos}{' '}
               {totalElementos === 1 ? 'orden' : 'órdenes'})
             </span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
               <Boton
                 type="button"
                 variante="secundario"
                 disabled={pagina <= 0 || cargandoOrdenes}
                 onClick={() => irAPagina(pagina - 1)}
+                className="flex-1 sm:flex-none min-h-[44px]"
               >
                 Anterior
               </Boton>
@@ -330,6 +388,7 @@ export function Bandeja(): JSX.Element {
                 variante="secundario"
                 disabled={pagina >= totalPaginas - 1 || cargandoOrdenes}
                 onClick={() => irAPagina(pagina + 1)}
+                className="flex-1 sm:flex-none min-h-[44px]"
               >
                 Siguiente
               </Boton>

@@ -179,7 +179,7 @@ export function SeguimientoOrden(): ReactNode {
       <nav className="mb-6" aria-label="Navegación de retorno">
         <a
           href="/mis-ordenes"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-accion hover:text-accion-honda underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-2 py-2 text-sm font-semibold text-accion hover:text-accion-honda underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo rounded-md"
         >
           <span aria-hidden="true">&larr;</span>
           Volver a mis órdenes
@@ -351,7 +351,7 @@ export function SeguimientoOrden(): ReactNode {
                               aria-checked={puntaje === estrella}
                               aria-label={`${estrella} de 5 estrellas`}
                               onClick={() => setPuntaje(estrella)}
-                              className="rounded-md p-1.5 text-tinta hover:bg-superficie-suave focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
+                              className="flex h-11 w-11 items-center justify-center rounded-lg p-1 text-tinta hover:bg-superficie-suave focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
                             >
                               <svg
                                 className={`h-7 w-7 transition-colors motion-reduce:transition-none ${

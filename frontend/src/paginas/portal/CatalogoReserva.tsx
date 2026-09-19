@@ -630,7 +630,7 @@ export function CatalogoReserva(): ReactNode {
                             </span>
                           </span>
 
-                          <span aria-hidden="true" className="text-tinta-suave">
+                          <span aria-hidden="true" className="hidden sm:inline text-tinta-suave">
                             —
                           </span>
 
@@ -638,7 +638,7 @@ export function CatalogoReserva(): ReactNode {
                             {taller.direccion}, {taller.distrito}
                           </span>
 
-                          <span aria-hidden="true" className="text-tinta-suave">
+                          <span aria-hidden="true" className="hidden sm:inline text-tinta-suave">
                             —
                           </span>
 
@@ -803,7 +803,7 @@ export function CatalogoReserva(): ReactNode {
                           type="button"
                           onClick={() => quitarFoto(foto.id)}
                           aria-label={`Quitar foto ${foto.nombre}`}
-                          className="shrink-0 rounded-md border border-linea px-2.5 py-1 text-xs font-medium text-peligro hover:bg-superficie-suave focus:outline-none focus:ring-2 focus:ring-peligro focus:ring-offset-2 focus:ring-offset-superficie"
+                          className="shrink-0 rounded-md border border-linea px-3 py-2 min-h-[44px] text-xs font-medium text-peligro hover:bg-superficie-suave focus:outline-none focus:ring-2 focus:ring-peligro focus:ring-offset-2 focus:ring-offset-superficie inline-flex items-center justify-center"
                         >
                           Quitar
                         </button>
@@ -953,7 +953,7 @@ export function CatalogoReserva(): ReactNode {
                                 setHoraSeleccionada(horaCorta)
                               }
                             }}
-                            className={`flex min-h-[40px] items-center justify-center rounded-md px-1 py-1 text-xs font-semibold transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie ${
+                            className={`flex min-h-[44px] items-center justify-center rounded-md px-1 py-1 text-xs font-semibold transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie ${
                               estaElegida
                                 ? 'border-2 border-accion bg-accion-tenue text-accion'
                                 : deshabilitada
@@ -1103,7 +1103,7 @@ export function CatalogoReserva(): ReactNode {
       <dialog
         ref={dialogRef}
         aria-labelledby="dialog-reserva-titulo"
-        className="fixed inset-0 m-auto max-w-lg w-[calc(100%-2rem)] rounded-xl border border-linea bg-superficie p-6 shadow-xl backdrop:bg-tinta/40"
+        className="m-auto max-w-lg w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] rounded-2xl border border-linea bg-superficie p-5 sm:p-6 shadow-xl backdrop:bg-tinta/40 overflow-y-auto text-tinta"
       >
         {ordenConfirmada && (
           <div className="flex flex-col gap-4">

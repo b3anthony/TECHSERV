@@ -62,7 +62,7 @@ export function MisOrdenes(): ReactNode {
 
         <a
           href="/"
-          className="inline-flex items-center justify-center rounded-lg bg-accion px-4 py-2.5 text-sm font-semibold text-superficie hover:bg-accion-honda transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-accion px-4 py-2.5 text-sm font-semibold text-superficie hover:bg-accion-honda transition-colors motion-reduce:transition-none focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
         >
           Nueva reserva
         </a>
@@ -155,7 +155,7 @@ export function MisOrdenes(): ReactNode {
               <div className="mt-4 flex justify-end">
                 <a
                   href={`/mis-ordenes/${orden.id}`}
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-accion hover:text-accion-honda hover:underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
+                  className="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-accion hover:text-accion-honda hover:underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
                 >
                   Ver seguimiento
                   <span aria-hidden="true">&rarr;</span>

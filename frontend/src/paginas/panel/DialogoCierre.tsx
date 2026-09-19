@@ -164,9 +164,9 @@ export function DialogoCierre({
     <dialog
       ref={dialogRef}
       onClose={manejarCierreDialogo}
-      className="m-auto w-full max-w-xl rounded-2xl border border-linea bg-superficie p-6 shadow-xl backdrop:bg-tinta/50 text-tinta max-h-[90vh] overflow-y-auto"
+      className="m-auto w-[calc(100%-2rem)] max-w-xl max-h-[calc(100dvh-2rem)] rounded-2xl border border-linea bg-superficie p-5 sm:p-6 shadow-xl backdrop:bg-tinta/50 text-tinta flex flex-col my-auto"
     >
-      <div className="flex items-start justify-between border-b border-linea pb-4">
+      <div className="shrink-0 flex items-start justify-between border-b border-linea pb-4">
         <div>
           <h2 className="text-lg font-bold text-tinta">Cerrar orden</h2>
           <p className="mt-1 text-xs text-tinta-suave">
@@ -178,7 +178,7 @@ export function DialogoCierre({
           onClick={() => dialogRef.current?.close()}
           disabled={cerrando}
           aria-label="Cerrar ventana"
-          className="rounded-lg p-1.5 text-tinta-suave hover:bg-superficie-suave hover:text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg p-2 text-tinta-suave hover:bg-superficie-suave hover:text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -187,7 +187,7 @@ export function DialogoCierre({
         </button>
       </div>
 
-      <div className="space-y-4 py-4">
+      <div className="overflow-y-auto flex-1 min-h-0 space-y-4 py-4">
         {errorMostrar && (
           <div role="alert" className="rounded-lg border border-peligro bg-superficie p-3 text-xs text-peligro">
             {errorMostrar}
@@ -230,7 +230,7 @@ export function DialogoCierre({
               variante="secundario"
               onClick={agregarFila}
               disabled={cerrando || cargandoRepuestos || catalogoRepuestos.length === 0}
-              className="text-xs py-1 px-3"
+              className="text-xs py-2 px-3 min-h-[40px]"
             >
               + Añadir repuesto
             </Boton>
@@ -262,8 +262,8 @@ export function DialogoCierre({
                     key={fila.idTemp}
                     className="flex flex-col gap-2 rounded-xl border border-linea bg-superficie-suave p-3"
                   >
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="flex-1 min-w-[180px]">
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                      <div className="flex-1 min-w-0">
                         <label
                           htmlFor={`repuesto-select-${fila.idTemp}`}
                           className="block text-xs font-medium text-tinta"
@@ -277,7 +277,7 @@ export function DialogoCierre({
                             const val = e.target.value ? Number(e.target.value) : null
                             actualizarFila(fila.idTemp, val, fila.cantidad)
                           }}
-                          className="mt-1 block w-full rounded-lg border border-linea bg-superficie px-2.5 py-1.5 text-xs text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
+                          className="mt-1 block w-full rounded-lg border border-linea bg-superficie px-2.5 py-2 text-xs text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie min-h-[40px]"
                         >
                           <option value="">Selecciona repuesto</option>
                           {catalogoRepuestos.map((r) => (
@@ -288,43 +288,45 @@ export function DialogoCierre({
                         </select>
                       </div>
 
-                      <div className="w-20">
-                        <label
-                          htmlFor={`repuesto-cant-${fila.idTemp}`}
-                          className="block text-xs font-medium text-tinta"
+                      <div className="flex items-end justify-between sm:justify-start gap-2">
+                        <div className="w-20">
+                          <label
+                            htmlFor={`repuesto-cant-${fila.idTemp}`}
+                            className="block text-xs font-medium text-tinta"
+                          >
+                            Cant.
+                          </label>
+                          <input
+                            type="number"
+                            id={`repuesto-cant-${fila.idTemp}`}
+                            min="1"
+                            max={repSeleccionado ? repSeleccionado.stock : 99}
+                            value={fila.cantidad}
+                            onChange={(e) => {
+                              const cant = Math.max(1, parseInt(e.target.value, 10) || 1)
+                              actualizarFila(fila.idTemp, fila.repuestoId, cant)
+                            }}
+                            className="mt-1 block w-full rounded-lg border border-linea bg-superficie px-2.5 py-2 text-xs text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie min-h-[40px]"
+                          />
+                        </div>
+
+                        <div className="flex-1 sm:w-24 text-right pr-1">
+                          <span className="block text-micro text-tinta-suave">Subtotal</span>
+                          <span className="text-xs font-bold text-tinta">S/ {subtotalFila}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => eliminarFila(fila.idTemp)}
+                          aria-label={`Eliminar repuesto ${index + 1}`}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg p-2 text-peligro hover:bg-superficie focus:outline-none focus:ring-2 focus:ring-peligro focus:ring-offset-2 focus:ring-offset-superficie"
                         >
-                          Cant.
-                        </label>
-                        <input
-                          type="number"
-                          id={`repuesto-cant-${fila.idTemp}`}
-                          min="1"
-                          max={repSeleccionado ? repSeleccionado.stock : 99}
-                          value={fila.cantidad}
-                          onChange={(e) => {
-                            const cant = Math.max(1, parseInt(e.target.value, 10) || 1)
-                            actualizarFila(fila.idTemp, fila.repuestoId, cant)
-                          }}
-                          className="mt-1 block w-full rounded-lg border border-linea bg-superficie px-2.5 py-1.5 text-xs text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
-                        />
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
                       </div>
-
-                      <div className="w-24 text-right">
-                        <span className="block text-micro text-tinta-suave">Subtotal</span>
-                        <span className="text-xs font-bold text-tinta">S/ {subtotalFila}</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => eliminarFila(fila.idTemp)}
-                        aria-label={`Eliminar repuesto ${index + 1}`}
-                        className="rounded-lg p-1.5 text-peligro hover:bg-superficie focus:outline-none focus:ring-2 focus:ring-peligro focus:ring-offset-2 focus:ring-offset-superficie"
-                      >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </button>
                     </div>
 
                     {errorFila && (
@@ -355,12 +357,13 @@ export function DialogoCierre({
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3 border-t border-linea pt-4">
+      <div className="shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 border-t border-linea pt-4">
         <Boton
           type="button"
           variante="secundario"
           disabled={cerrando}
           onClick={() => dialogRef.current?.close()}
+          className="w-full sm:w-auto min-h-[44px]"
         >
           Cancelar
         </Boton>
@@ -370,6 +373,7 @@ export function DialogoCierre({
           cargando={cerrando}
           disabled={cerrando}
           onClick={manejarCerrar}
+          className="w-full sm:w-auto min-h-[44px]"
         >
           Confirmar cierre de orden
         </Boton>

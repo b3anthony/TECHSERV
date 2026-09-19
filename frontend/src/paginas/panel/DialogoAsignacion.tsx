@@ -111,9 +111,9 @@ export function DialogoAsignacion({
     <dialog
       ref={dialogRef}
       onClose={manejarCerrar}
-      className="m-auto w-full max-w-lg rounded-2xl border border-linea bg-superficie p-6 shadow-xl backdrop:bg-tinta/50 text-tinta"
+      className="m-auto w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] rounded-2xl border border-linea bg-superficie p-5 sm:p-6 shadow-xl backdrop:bg-tinta/50 text-tinta flex flex-col my-auto"
     >
-      <div className="flex items-start justify-between border-b border-linea pb-4">
+      <div className="shrink-0 flex items-start justify-between border-b border-linea pb-4">
         <div>
           <h2 className="text-lg font-bold text-tinta">Asignar técnico</h2>
           <p className="mt-1 text-xs text-tinta-suave">
@@ -126,7 +126,7 @@ export function DialogoAsignacion({
           onClick={() => dialogRef.current?.close()}
           disabled={asignando}
           aria-label="Cerrar ventana de asignación"
-          className="rounded-lg p-1.5 text-tinta-suave hover:bg-superficie-suave hover:text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg p-2 text-tinta-suave hover:bg-superficie-suave hover:text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -135,7 +135,7 @@ export function DialogoAsignacion({
         </button>
       </div>
 
-      <div className="py-4">
+      <div className="overflow-y-auto flex-1 min-h-0 py-4">
         {errorMostrar && (
           <div role="alert" className="mb-4 rounded-lg border border-peligro bg-superficie p-3 text-xs text-peligro">
             {errorMostrar}
@@ -216,12 +216,13 @@ export function DialogoAsignacion({
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-3 border-t border-linea pt-4">
+      <div className="shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 border-t border-linea pt-4">
         <Boton
           type="button"
           variante="secundario"
           disabled={asignando}
           onClick={() => dialogRef.current?.close()}
+          className="w-full sm:w-auto min-h-[44px]"
         >
           Cancelar
         </Boton>
@@ -231,6 +232,7 @@ export function DialogoAsignacion({
           cargando={asignando}
           disabled={!idSeleccionadoFinal || asignando || cargandoTecnicos}
           onClick={manejarAsignar}
+          className="w-full sm:w-auto min-h-[44px]"
         >
           Asignar y enviar correo al técnico
         </Boton>
