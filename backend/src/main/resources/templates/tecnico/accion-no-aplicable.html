@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acción no aplicable · TechServ</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .tarjeta {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    }
+    .icono {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background-color: #fef3c7;
+      color: #d97706;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0 0 12px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    p {
+      margin: 0 0 20px 0;
+      font-size: 15px;
+      line-height: 1.5;
+      color: #475569;
+    }
+    .detalles {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      text-align: left;
+    }
+    .fila {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .fila:last-child {
+      margin-bottom: 0;
+    }
+    .etiqueta {
+      color: #475569;
+    }
+    .valor {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid #1d4ed8;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="tarjeta">
+    <div class="icono" aria-hidden="true">⚠</div>
+    <h1>Acción no disponible</h1>
+    <p>La orden ya no está en el estado requerido para realizar esta acción.</p>
+    <div class="detalles" th:if="${orden != null}">
+      <div class="fila">
+        <span class="etiqueta">Orden:</span>
+        <span class="valor" th:text="${orden.codigo}">ORD-0000</span>
+      </div>
+      <div class="fila">
+        <span class="etiqueta">Estado actual:</span>
+        <span class="valor" th:text="${orden.estado.etiqueta}">En camino</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
