@@ -14,12 +14,16 @@ import pe.techserv.mype.MypeRepository;
 import pe.techserv.orden.*;
 import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.OrdenResumen;
+import pe.techserv.reserva.dto.DetalleCalificacion;
+import pe.techserv.reserva.dto.NuevaCalificacion;
 import pe.techserv.reserva.dto.NuevaReserva;
+import pe.techserv.reserva.dto.Seguimiento;
 import pe.techserv.usuario.Cliente;
 import pe.techserv.usuario.ClienteRepository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /** Crear una orden y consultarla desde el lado del cliente. */
 @Service
@@ -28,6 +32,7 @@ public class ServicioReserva {
     private final OrdenServicioRepository ordenes;
     private final OrdenFotoRepository fotos;
     private final OrdenHistorialRepository historial;
+    private final CalificacionRepository calificaciones;
     private final ClienteRepository clientes;
     private final MypeRepository mypes;
     private final MypeEspecialidadRepository especialidades;
@@ -35,12 +40,14 @@ public class ServicioReserva {
     private final ServicioAlmacenamiento almacen;
 
     public ServicioReserva(OrdenServicioRepository ordenes, OrdenFotoRepository fotos,
-                           OrdenHistorialRepository historial, ClienteRepository clientes,
-                           MypeRepository mypes, MypeEspecialidadRepository especialidades,
+                           OrdenHistorialRepository historial, CalificacionRepository calificaciones,
+                           ClienteRepository clientes, MypeRepository mypes,
+                           MypeEspecialidadRepository especialidades,
                            ServicioCatalogo catalogo, ServicioAlmacenamiento almacen) {
         this.ordenes = ordenes;
         this.fotos = fotos;
         this.historial = historial;
+        this.calificaciones = calificaciones;
         this.clientes = clientes;
         this.mypes = mypes;
         this.especialidades = especialidades;
@@ -166,6 +173,58 @@ public class ServicioReserva {
     @Transactional(readOnly = true)
     public ServicioCatalogo.AgendaDia agenda(Long mypeId, LocalDate fecha) {
         return catalogo.agenda(mypeId, fecha);
+    }
+
+    @Transactional(readOnly = true)
+    public Seguimiento seguimiento(Long clienteId, Long ordenId) {
+        OrdenServicio orden = ordenes.findByIdAndClienteId(ordenId, clienteId)
+                .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
+
+        boolean tieneCalificacion = calificaciones.existsByOrdenId(orden.getId());
+        return Seguimiento.de(orden, tieneCalificacion);
+    }
+
+    @Transactional
+    public Seguimiento calificar(Long clienteId, Long ordenId, NuevaCalificacion datos) {
+        OrdenServicio orden = ordenes.findByIdAndClienteId(ordenId, clienteId)
+                .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
+
+        if (calificaciones.existsByOrdenId(orden.getId())) {
+            throw new ConflictoEstado("Ya calificaste este servicio");
+        }
+
+        if (orden.getEstado() != EstadoOrden.COMPLETADA) {
+            throw new ConflictoEstado("Solo se puede calificar un servicio completado");
+        }
+
+        if (!orden.getEstado().permite(EstadoOrden.CALIFICADA)) {
+            throw new ConflictoEstado("Una orden " + orden.getEstado().getEtiqueta().toLowerCase()
+                    + " ya no se puede calificar");
+        }
+
+        Calificacion calificacion = new Calificacion();
+        calificacion.setOrden(orden);
+        calificacion.setPuntaje(datos.puntaje());
+        calificacion.setComentario(vacioANulo(datos.comentario()));
+        calificaciones.save(calificacion);
+
+        EstadoOrden anterior = orden.getEstado();
+        orden.setEstado(EstadoOrden.CALIFICADA);
+        ordenes.save(orden);
+
+        anotar(orden, anterior, EstadoOrden.CALIFICADA, ActorHistorial.CLIENTE,
+               "El cliente calificó el servicio con " + datos.puntaje() + " de 5");
+
+        return Seguimiento.de(orden, true);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<DetalleCalificacion> consultarCalificacion(Long clienteId, Long ordenId) {
+        OrdenServicio orden = ordenes.findByIdAndClienteId(ordenId, clienteId)
+                .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
+
+        return calificaciones.findByOrdenId(orden.getId())
+                .map(DetalleCalificacion::de);
     }
 
     private String siguienteCodigo() {

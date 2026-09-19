@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.OrdenResumen;
+import pe.techserv.reserva.dto.DetalleCalificacion;
+import pe.techserv.reserva.dto.NuevaCalificacion;
 import pe.techserv.reserva.dto.NuevaReserva;
+import pe.techserv.reserva.dto.Seguimiento;
 import pe.techserv.seguridad.UsuarioAutenticado;
 
 import java.util.List;
@@ -54,6 +57,28 @@ public class ControladorMisOrdenes {
     public OrdenDetalle detalle(@AuthenticationPrincipal UsuarioAutenticado usuario,
                                 @PathVariable Long id) {
         return reservas.miOrden(usuario.clienteIdObligatorio(), id);
+    }
+
+    @GetMapping("/{id}/seguimiento")
+    public Seguimiento seguimiento(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                   @PathVariable Long id) {
+        return reservas.seguimiento(usuario.clienteIdObligatorio(), id);
+    }
+
+    @PostMapping("/{id}/calificacion")
+    public Seguimiento calificar(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                 @PathVariable Long id,
+                                 @Valid @RequestBody NuevaCalificacion datos) {
+        return reservas.calificar(usuario.clienteIdObligatorio(), id, datos);
+    }
+
+    @GetMapping("/{id}/calificacion")
+    public ResponseEntity<DetalleCalificacion> calificacion(
+            @AuthenticationPrincipal UsuarioAutenticado usuario,
+            @PathVariable Long id) {
+        return reservas.consultarCalificacion(usuario.clienteIdObligatorio(), id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PostMapping("/{id}/cancelar")
