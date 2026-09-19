@@ -1,12 +1,17 @@
 package pe.techserv.panel;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import pe.techserv.orden.EstadoOrden;
 import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.OrdenResumen;
+import pe.techserv.panel.dto.PeticionAsignar;
+import pe.techserv.panel.dto.TecnicoDisponible;
 import pe.techserv.seguridad.UsuarioAutenticado;
+
+import java.util.List;
 
 /**
  * Las rutas del administrador de la MYPE.
@@ -37,6 +42,18 @@ public class ControladorPanel {
     public OrdenDetalle detalle(@AuthenticationPrincipal UsuarioAutenticado usuario,
                                 @PathVariable Long id) {
         return panel.detalle(usuario.mypeIdObligatorio(), id);
+    }
+
+    @PostMapping("/ordenes/{id}/asignar")
+    public OrdenDetalle asignar(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                @PathVariable Long id,
+                                @Valid @RequestBody PeticionAsignar peticion) {
+        return panel.asignar(usuario.mypeIdObligatorio(), id, peticion.tecnicoId());
+    }
+
+    @GetMapping("/tecnicos")
+    public List<TecnicoDisponible> tecnicos(@AuthenticationPrincipal UsuarioAutenticado usuario) {
+        return panel.tecnicos(usuario.mypeIdObligatorio());
     }
 
     @GetMapping("/indicadores")

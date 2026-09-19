@@ -8,8 +8,10 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import pe.techserv.comun.Especialidad;
 
 public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Long> {
 
@@ -76,6 +78,10 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
      */
     @Query(value = "SELECT nextval('orden_codigo_seq')", nativeQuery = true)
     long siguienteCorrelativo();
+
+    boolean existsByMypeIdAndTecnicoIdAndEstadoIn(Long mypeId, Long tecnicoId, Collection<EstadoOrden> estados);
+
+    boolean existsByMypeIdAndEspecialidadAndEstadoIn(Long mypeId, Especialidad especialidad, Collection<EstadoOrden> estados);
 
     interface FranjaOcupada {
         LocalTime getHora();

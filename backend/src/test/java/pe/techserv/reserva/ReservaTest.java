@@ -46,18 +46,19 @@ class ReservaTest extends BasePruebaIntegracion {
         Long taller = tallerDelgado();
         long aforo = tecnicos.countByMypeIdAndDisponibleTrue(taller);
         assertThat(aforo)
-                .as("la semilla deja 2 técnicos disponibles en Servicios Delgado")
-                .isEqualTo(2);
+                .as("la semilla deja 2 técnicos disponibles en Servicios Delgado, pero otras pruebas pueden agregar más")
+                .isGreaterThanOrEqualTo(2);
 
         // Un día lejano: la semilla no pone nada ahí, así que la franja empieza vacía.
         LocalDate dia = LocalDate.now().plusDays(30);
         String token = tokenDe(CLIENTE);
 
-        // Las dos primeras caben: hay dos técnicos.
-        reservar(token, taller, dia, "10:00").andExpect(status().isCreated());
-        reservar(token, taller, dia, "10:00").andExpect(status().isCreated());
+        // Las 'aforo' primeras caben: hay 'aforo' técnicos.
+        for (int i = 0; i < aforo; i++) {
+            reservar(token, taller, dia, "10:00").andExpect(status().isCreated());
+        }
 
-        // La tercera no: no hay a quién mandar.
+        // La siguiente no: no hay a quién mandar.
         reservar(token, taller, dia, "10:00")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.mensaje").value(
