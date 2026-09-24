@@ -74,6 +74,8 @@ export interface OrdenDetalle {
   total: number | null
   creadaEn: string
   fotos: string[]
+  /** Las que subió el técnico durante el trabajo. */
+  fotosTrabajo: string[]
   historial: PasoHistorial[]
   repuestos: RepuestoUsado[]
 }

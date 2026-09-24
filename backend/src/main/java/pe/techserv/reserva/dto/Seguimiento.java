@@ -3,6 +3,8 @@ package pe.techserv.reserva.dto;
 import pe.techserv.orden.EstadoOrden;
 import pe.techserv.orden.OrdenHistorial;
 import pe.techserv.orden.OrdenServicio;
+import pe.techserv.orden.OrigenFoto;
+import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.PasoHistorial;
 
 import java.time.LocalDate;
@@ -19,7 +21,8 @@ public record Seguimiento(String codigo,
                           LocalTime horaProgramada,
                           List<PasoHistorial> pasos,
                           boolean puedeCancelar,
-                          boolean puedeCalificar) {
+                          boolean puedeCalificar,
+                          List<String> fotosTrabajo) {
 
     public static Seguimiento de(OrdenServicio orden, boolean tieneCalificacion) {
         boolean puedeCancelar = orden.getEstado().permite(EstadoOrden.CANCELADA);
@@ -41,7 +44,8 @@ public record Seguimiento(String codigo,
                 orden.getHoraProgramada(),
                 pasos,
                 puedeCancelar,
-                puedeCalificar
+                puedeCalificar,
+                OrdenDetalle.rutas(orden, OrigenFoto.TECNICO)
         );
     }
 }

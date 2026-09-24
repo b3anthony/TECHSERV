@@ -51,6 +51,15 @@ public class ControladorPanel {
         return panel.asignar(usuario.mypeIdObligatorio(), id, peticion.tecnicoId());
     }
 
+    /** Un enlace a la pagina del tecnico de esa orden, para compartirlo a mano. */
+    @PostMapping("/ordenes/{id}/enlace-tecnico")
+    public EnlaceTecnicoUrl enlaceTecnico(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                          @PathVariable Long id) {
+        return new EnlaceTecnicoUrl(panel.enlaceTecnico(usuario.mypeIdObligatorio(), id));
+    }
+
+    public record EnlaceTecnicoUrl(String url) {}
+
     @GetMapping("/tecnicos")
     public List<TecnicoDisponible> tecnicos(@AuthenticationPrincipal UsuarioAutenticado usuario) {
         return panel.tecnicos(usuario.mypeIdObligatorio());

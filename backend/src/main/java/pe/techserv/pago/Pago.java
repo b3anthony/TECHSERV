@@ -1,6 +1,7 @@
 package pe.techserv.pago;
 
 import jakarta.persistence.*;
+import pe.techserv.mype.Tecnico;
 import pe.techserv.orden.OrdenServicio;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -35,6 +36,11 @@ public class Pago {
     @Column(name = "pagado_en")
     private OffsetDateTime pagadoEn;
 
+    /** El tecnico que recibio el dinero. Null si lo registro el taller desde el panel. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cobrado_por_tecnico_id")
+    private Tecnico cobradoPor;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public OrdenServicio getOrden() { return orden; }
@@ -47,4 +53,6 @@ public class Pago {
     public void setEstado(EstadoPago estado) { this.estado = estado; }
     public OffsetDateTime getPagadoEn() { return pagadoEn; }
     public void setPagadoEn(OffsetDateTime pagadoEn) { this.pagadoEn = pagadoEn; }
+    public Tecnico getCobradoPor() { return cobradoPor; }
+    public void setCobradoPor(Tecnico cobradoPor) { this.cobradoPor = cobradoPor; }
 }

@@ -21,6 +21,7 @@ import pe.techserv.orden.OrdenServicioRepository;
 import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.OrdenResumen;
 import pe.techserv.panel.dto.TecnicoDisponible;
+import pe.techserv.visita.ServicioEnlaces;
 
 import java.util.List;
 import java.util.Map;
@@ -45,15 +46,18 @@ public class ServicioPanel {
     private final TecnicoRepository tecnicos;
     private final OrdenHistorialRepository historial;
     private final Optional<AvisoTecnico> avisos;
+    private final ServicioEnlaces enlaces;
 
     public ServicioPanel(OrdenServicioRepository ordenes,
                          TecnicoRepository tecnicos,
                          OrdenHistorialRepository historial,
-                         Optional<AvisoTecnico> avisos) {
+                         Optional<AvisoTecnico> avisos,
+                         ServicioEnlaces enlaces) {
         this.ordenes = ordenes;
         this.tecnicos = tecnicos;
         this.historial = historial;
         this.avisos = avisos;
+        this.enlaces = enlaces;
     }
 
     @Transactional(readOnly = true)
@@ -139,6 +143,23 @@ public class ServicioPanel {
         return OrdenDetalle.de(orden);
     }
 
+    /**
+     * Un enlace nuevo a la pagina del tecnico, para mandarselo por otro medio
+     * (WhatsApp, o si el correo no le llego). Los anteriores siguen valiendo.
+     */
+    @Transactional
+    public String enlaceTecnico(Long mypeId, Long ordenId) {
+        OrdenServicio orden = ordenes.findByIdAndMypeId(ordenId, mypeId)
+                .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
+        if (orden.getTecnico() == null) {
+            throw new ConflictoEstado("Asigna un técnico antes de pedir su enlace");
+        }
+        if (orden.getEstado() == EstadoOrden.CANCELADA) {
+            throw new ConflictoEstado("La orden está cancelada");
+        }
+        return enlaces.crear(orden);
+    }
+
     @Transactional(readOnly = true)
     public List<TecnicoDisponible> tecnicos(Long mypeId) {
         Map<Long, Long> carga = tecnicos.cargaDeHoy(mypeId).stream()
@@ -148,10 +169,14 @@ public class ServicioPanel {
                         c -> c.getAbiertas() == null ? 0L : c.getAbiertas(),
                         (existente, reemplazo) -> existente));
 
+        // Los dados de baja no vuelven a aparecer: ni en el equipo ni para asignar.
         return tecnicos.findByMypeIdOrderByIdAsc(mypeId).stream()
+                .filter(t -> t.getUsuario().isActivo())
                 .map(t -> new TecnicoDisponible(
                         t.getId(),
                         t.getUsuario().getNombreCompleto(),
+                        t.getUsuario().getNombres(),
+                        t.getUsuario().getApellidos(),
                         t.getUsuario().getEmail(),
                         t.getUsuario().getTelefono(),
                         t.isDisponible(),

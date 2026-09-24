@@ -1,13 +1,17 @@
 import type { ReactNode } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { SesionProvider, useSesion } from './sesion/SesionProvider.tsx'
+import { SesionProvider } from './sesion/SesionProvider.tsx'
+import { MarcoPublico } from './componentes/marco/MarcoPublico.tsx'
+import { MarcoPrivado } from './componentes/marco/MarcoPrivado.tsx'
 import { RutaProtegida } from './rutas/RutaProtegida.tsx'
 import { Entrar } from './paginas/Entrar.tsx'
 import { Registro } from './paginas/Registro.tsx'
 import { CatalogoReserva } from './paginas/portal/CatalogoReserva.tsx'
+import { Portada } from './paginas/portal/Portada.tsx'
 import { PortalCliente } from './paginas/portal/PortalCliente.tsx'
 import { PanelRutas } from './paginas/panel/PanelRutas.tsx'
+import { PaginaVisita } from './paginas/visita/PaginaVisita.tsx'
 
 const queryClient = new QueryClient()
 
@@ -24,8 +28,6 @@ export default function App(): ReactNode {
 }
 
 function AppLayout(): ReactNode {
-  const { usuario, salir } = useSesion()
-
   return (
     <>
       <a
@@ -35,44 +37,12 @@ function AppLayout(): ReactNode {
         Saltar al contenido
       </a>
 
-      <header className="border-b border-linea bg-superficie">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
-          <a
-            href="/"
-            className="inline-flex min-h-[44px] items-center text-lg font-bold text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie rounded-md"
-          >
-            TechServ
-          </a>
-
-          <div className="flex items-center gap-2 sm:gap-4 text-sm">
-            {usuario ? (
-              <>
-                <span className="text-tinta-media truncate max-w-[120px] sm:max-w-xs">
-                  {usuario.nombreCompleto}
-                </span>
-                <button
-                  type="button"
-                  onClick={salir}
-                  className="inline-flex min-h-[44px] items-center rounded-lg px-2.5 py-1.5 font-semibold text-tinta-suave hover:text-tinta hover:bg-superficie-suave focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
-                >
-                  Salir
-                </button>
-              </>
-            ) : (
-              <a
-                href="/entrar"
-                className="inline-flex min-h-[44px] items-center rounded-lg px-3 py-2 font-semibold text-accion hover:text-accion-honda hover:bg-superficie-suave focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
-              >
-                Iniciar sesión
-              </a>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div id="contenido" className="w-full min-w-0">
-        <Routes>
-          <Route path="/" element={<CatalogoReserva />} />
+      <Routes>
+        <Route element={<MarcoPublico cabeceraSobreHeroe />}>
+          <Route path="/" element={<Portada />} />
+        </Route>
+        <Route element={<MarcoPublico />}>
+          <Route path="/reservar" element={<CatalogoReserva />} />
           <Route path="/entrar" element={<Entrar />} />
           <Route path="/registro" element={<Registro />} />
           <Route
@@ -83,17 +53,21 @@ function AppLayout(): ReactNode {
               </RutaProtegida>
             }
           />
-          <Route
-            path="/panel/*"
-            element={
-              <RutaProtegida rol="ADMIN_MYPE">
-                <PanelRutas />
-              </RutaProtegida>
-            }
-          />
+        </Route>
+        {/* El técnico entra desde su correo, sin cuenta: la llave es el token. */}
+        <Route path="/visita/:token" element={<PaginaVisita />} />
+        <Route
+          path="/panel/*"
+          element={
+            <RutaProtegida rol="ADMIN_MYPE">
+              <PanelRutas />
+            </RutaProtegida>
+          }
+        />
+        <Route element={<MarcoPrivado />}>
           <Route path="*" element={<PaginaNoEncontrada />} />
-        </Routes>
-      </div>
+        </Route>
+      </Routes>
     </>
   )
 }

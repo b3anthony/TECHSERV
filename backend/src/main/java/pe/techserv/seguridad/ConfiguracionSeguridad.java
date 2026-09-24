@@ -51,6 +51,8 @@ public class ConfiguracionSeguridad {
                 // el técnico llega desde el correo, sin sesión: su seguridad es
                 // el token firmado de un solo uso, no una contraseña
                 .requestMatchers("/t/**").permitAll()
+                // su pagina de trabajo, igual: la llave es el token del enlace
+                .requestMatchers("/api/visita/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api-docs/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()

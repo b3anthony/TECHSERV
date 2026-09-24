@@ -39,6 +39,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -368,6 +369,43 @@ class CierreTest extends BasePruebaIntegracion {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.estado").value(409))
                 .andExpect(jsonPath("$.mensaje").value("Esa orden ya tiene un pago registrado"));
+    }
+
+    @Test
+    @DisplayName("Consultar el pago: 204 si aún no se cobró, 200 con el método tras cobrar y 404 si la orden es de otro taller")
+    void consultarPago() throws Exception {
+        OrdenServicio orden = fabricarOrden(mypeDelgado(), EstadoOrden.EN_PROCESO);
+        String token = tokenDe(ADMIN_DELGADO);
+
+        mvc.perform(post("/api/panel/ordenes/{id}/cerrar", orden.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {"diagnostico": "Listo", "precioManoObra": 40.00}
+                                 """))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/panel/ordenes/{id}/pago", orden.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(post("/api/panel/ordenes/{id}/pago", orden.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {"metodo": "PLIN"}
+                                 """))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/panel/ordenes/{id}/pago", orden.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metodo").value("PLIN"))
+                .andExpect(jsonPath("$.ordenId").value(orden.getId()));
+
+        mvc.perform(get("/api/panel/ordenes/{id}/pago", orden.getId())
+                        .header("Authorization", "Bearer " + tokenDe(ADMIN_TECNOHOGAR)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -2,7 +2,9 @@ package pe.techserv.orden;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,16 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
      * un findById suelto en las rutas de administracion.
      */
     Optional<OrdenServicio> findByIdAndMypeId(Long id, Long mypeId);
+
+    /**
+     * La misma orden, pero con la fila bloqueada (SELECT ... FOR UPDATE) hasta
+     * que termine la transaccion. La usan los pasos que cambian estado, dinero
+     * o stock: dos toques seguidos del tecnico, o el tecnico y el taller a la
+     * vez, se ponen en fila en vez de cerrar dos veces la misma orden.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT os FROM OrdenServicio os WHERE os.id = :id AND os.mype.id = :mypeId")
+    Optional<OrdenServicio> bloquear(@Param("id") Long id, @Param("mypeId") Long mypeId);
 
     Page<OrdenServicio> findByMypeIdOrderByFechaProgramadaDescHoraProgramadaDesc(
             Long mypeId, Pageable pagina);

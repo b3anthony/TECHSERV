@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { JSX } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { api, mensajeDeError } from '../../api/cliente.ts'
-import { Boton } from '../../componentes/Boton.tsx'
-import { Cargando } from '../../componentes/Cargando.tsx'
+import { Icono } from '../../componentes/Icono.tsx'
+import { focoClaro } from '../../componentes/marco/foco.ts'
+import { Aviso } from '../../componentes/publico/Aviso.tsx'
+import { Boton } from '../../componentes/publico/Boton.tsx'
 import type { Especialidad } from '../../tipos.ts'
-import type { EspecialidadItem } from '../portal/tiposPortal.ts'
+import { DialogoPanel, EsqueletoLista } from './comun.tsx'
+import { ESPECIALIDAD_CORTA, iniciales } from './formato.ts'
+import { useTecnicos } from './datos.ts'
 import type { TecnicoDisponible } from './tiposPanel.ts'
 
 interface DialogoAsignacionProps {
@@ -13,9 +17,16 @@ interface DialogoAsignacionProps {
   codigoOrden: string
   especialidadOrden: Especialidad
   etiquetaEspecialidad: string
+  /** Lo que se ve del caso en la cabecera, para no asignar a ciegas. */
+  resumen?: string
   abierto: boolean
   alCerrar: () => void
   alAsignarExitoso: () => void
+}
+
+function cargaTexto(n: number): string {
+  if (n === 0) return 'Libre hoy'
+  return `${n} ${n === 1 ? 'visita' : 'visitas'} hoy`
 }
 
 export function DialogoAsignacion({
@@ -23,6 +34,7 @@ export function DialogoAsignacion({
   codigoOrden,
   especialidadOrden,
   etiquetaEspecialidad,
+  resumen,
   abierto,
   alCerrar,
   alAsignarExitoso,
@@ -32,55 +44,15 @@ export function DialogoAsignacion({
   const [asignando, setAsignando] = useState(false)
   const [errorAsignacion, setErrorAsignacion] = useState<string | null>(null)
 
-  const {
-    data: tecnicos = [],
-    isLoading: cargandoTecnicos,
-    error: errorQuery,
-  } = useQuery<TecnicoDisponible[]>({
-    queryKey: ['panel', 'tecnicos'],
-    queryFn: async () => {
-      const res = await api.get('/panel/tecnicos')
-      return (res.data as TecnicoDisponible[]) || []
-    },
-    enabled: abierto,
-  })
+  const { data: tecnicos = [], isLoading: cargandoTecnicos, error: errorQuery } = useTecnicos()
 
-  const { data: especialidadesCatalogo = [] } = useQuery<EspecialidadItem[]>({
-    queryKey: ['catalogo', 'especialidades'],
-    queryFn: async () => {
-      const res = await api.get('/catalogo/especialidades')
-      return (res.data as EspecialidadItem[]) || []
-    },
-    enabled: abierto,
-  })
-
-  function obtenerEtiquetaEspecialidad(esp: Especialidad): string {
-    if (esp === especialidadOrden) return etiquetaEspecialidad
-    const encontrada = especialidadesCatalogo.find((e) => e.clave === esp)
-    return encontrada ? encontrada.titulo : esp
-  }
-
-  useEffect(() => {
-    const el = dialogRef.current
-    if (!el) return
-
-    if (abierto) {
-      if (!el.open) {
-        el.showModal()
-      }
-    } else {
-      if (el.open) {
-        el.close()
-      }
-    }
-  }, [abierto])
+  const puede = (t: TecnicoDisponible) => t.disponible && t.especialidades.includes(especialidadOrden)
+  // Primero quienes pueden ir, y de ellos el que tiene menos visitas hoy.
+  const ordenados = [...tecnicos].sort((a, b) => Number(puede(b)) - Number(puede(a)) || a.ordenesHoy - b.ordenesHoy)
+  const recomendadoId = ordenados.find(puede)?.id ?? null
+  const idSeleccionadoFinal = tecnicoSeleccionadoId ?? recomendadoId
 
   const errorMostrar = errorAsignacion || (errorQuery ? mensajeDeError(errorQuery) : null)
-
-  // Preseleccionar el primer técnico válido si no hay ninguno seleccionado manualmente
-  const primerTecnicoValidoId =
-    tecnicos.find((t) => t.disponible && t.especialidades.includes(especialidadOrden))?.id ?? null
-  const idSeleccionadoFinal = tecnicoSeleccionadoId ?? primerTecnicoValidoId
 
   async function manejarAsignar(): Promise<void> {
     if (!idSeleccionadoFinal) return
@@ -107,136 +79,102 @@ export function DialogoAsignacion({
     alCerrar()
   }
 
+  const elegido = tecnicos.find((t) => t.id === idSeleccionadoFinal)
+
   return (
-    <dialog
+    <DialogoPanel
       ref={dialogRef}
-      onClose={manejarCerrar}
-      className="m-auto w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] rounded-2xl border border-linea bg-superficie p-5 sm:p-6 shadow-xl backdrop:bg-tinta/50 text-tinta flex flex-col my-auto"
+      abierto={abierto}
+      alCerrar={manejarCerrar}
+      ocupado={asignando}
+      titulo="Asignar técnico"
+      detalle={
+        <>
+          <span className="font-bold text-publico-tinta">{codigoOrden}</span> · necesita {etiquetaEspecialidad.toLowerCase()}
+          {resumen && <span className="mt-1 block line-clamp-2 first-letter:uppercase">«{resumen}»</span>}
+        </>
+      }
+      pie={
+        <>
+          <Boton type="button" variante="secundario" disabled={asignando} onClick={() => dialogRef.current?.close()}>
+            Cancelar
+          </Boton>
+          <Boton type="button" cargando={asignando} disabled={!idSeleccionadoFinal || asignando || cargandoTecnicos} onClick={manejarAsignar}>
+            {elegido ? `Asignar a ${elegido.nombres || elegido.nombreCompleto.split(' ')[0]}` : 'Asignar'}
+          </Boton>
+        </>
+      }
     >
-      <div className="shrink-0 flex items-start justify-between border-b border-linea pb-4">
-        <div>
-          <h2 className="text-lg font-bold text-tinta">Asignar técnico</h2>
-          <p className="mt-1 text-xs text-tinta-suave">
-            Orden <span className="font-semibold text-tinta">{codigoOrden}</span> — Requiere:{' '}
-            <span className="font-semibold text-tinta">{etiquetaEspecialidad}</span>
-          </p>
+      {errorMostrar && <Aviso tipo="error" className="mb-4">{errorMostrar}</Aviso>}
+
+      {cargandoTecnicos ? (
+        <EsqueletoLista filas={3} alto="h-16" etiqueta="Cargando técnicos…" />
+      ) : tecnicos.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-publico-linea-fuerte px-4 py-6 text-center text-sm text-publico-tinta-media">
+          Todavía no tienes técnicos.{' '}
+          <Link to="/panel/equipo" className={`font-bold text-publico-tinta underline decoration-publico-acento decoration-2 underline-offset-4 ${focoClaro}`}>Añade el primero</Link>
         </div>
-        <button
-          type="button"
-          onClick={() => dialogRef.current?.close()}
-          disabled={asignando}
-          aria-label="Cerrar ventana de asignación"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg p-2 text-tinta-suave hover:bg-superficie-suave hover:text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
+      ) : (
+        <fieldset>
+          <legend className="mb-3 text-sm text-publico-tinta-media">Elige quién irá. Te sugerimos al que tiene menos visitas hoy.</legend>
+          <div className="grid gap-2">
+            {ordenados.map((tec) => {
+              const atiende = tec.especialidades.includes(especialidadOrden)
+              const seleccionable = puede(tec)
+              const esSeleccionado = idSeleccionadoFinal === tec.id
+              const motivo = !atiende ? `No atiende ${ESPECIALIDAD_CORTA[especialidadOrden].toLowerCase()}` : !tec.disponible ? 'Marcado como no disponible' : null
 
-      <div className="overflow-y-auto flex-1 min-h-0 py-4">
-        {errorMostrar && (
-          <div role="alert" className="mb-4 rounded-lg border border-peligro bg-superficie p-3 text-xs text-peligro">
-            {errorMostrar}
-          </div>
-        )}
-
-        {cargandoTecnicos ? (
-          <Cargando />
-        ) : (
-          <fieldset className="space-y-3">
-            <legend className="sr-only">Técnicos del taller</legend>
-            {tecnicos.length === 0 ? (
-              <p className="text-sm text-tinta-suave">No hay técnicos registrados.</p>
-            ) : (
-              tecnicos.map((tec) => {
-                const atiende = tec.especialidades.includes(especialidadOrden)
-                const disponible = tec.disponible
-                const seleccionable = atiende && disponible
-                const esSeleccionado = idSeleccionadoFinal === tec.id
-
-                return (
-                  <label
-                    key={tec.id}
-                    htmlFor={`tecnico-${tec.id}`}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors motion-reduce:transition-none ${
-                      !seleccionable
-                        ? 'cursor-not-allowed border-linea bg-superficie-suave opacity-60'
-                        : esSeleccionado
-                          ? 'border-accion bg-accion-tenue'
-                          : 'border-linea bg-superficie hover:border-linea-fuerte'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      id={`tecnico-${tec.id}`}
-                      name="tecnico_elegido"
-                      value={tec.id}
-                      checked={esSeleccionado}
-                      disabled={!seleccionable || asignando}
-                      onChange={() => setTecnicoSeleccionadoId(tec.id)}
-                      className="mt-1 h-4 w-4 text-accion focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
-                    />
-                    <div className="flex-1 text-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-1">
-                        <span className="font-semibold text-tinta">{tec.nombreCompleto}</span>
-                        {disponible ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-completada">
-                            <span className="h-1.5 w-1.5 rounded-full bg-completada" aria-hidden="true" />
-                            Disponible
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-peligro">
-                            <span className="h-1.5 w-1.5 rounded-full bg-peligro" aria-hidden="true" />
-                            No disponible
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="mt-0.5 text-xs text-tinta-media">
-                        {tec.especialidades.map((esp) => obtenerEtiquetaEspecialidad(esp)).join(', ')}
-                      </p>
-
-                      <p className="mt-1 text-xs text-tinta-suave">
-                        {tec.ordenesHoy} {tec.ordenesHoy === 1 ? 'orden hoy' : 'órdenes hoy'}
-                      </p>
-
-                      {!atiende && (
-                        <p className="mt-1 text-xs font-semibold text-peligro">
-                          No atiende esta especialidad
-                        </p>
+              return (
+                <label
+                  key={tec.id}
+                  className={`relative flex items-center gap-3 rounded-xl border-2 p-3 has-[:focus]:ring-2 has-[:focus]:ring-publico-acento has-[:focus]:ring-offset-2 has-[:focus]:ring-offset-publico-superficie motion-safe:transition-colors ${
+                    !seleccionable
+                      ? 'cursor-not-allowed border-publico-linea bg-publico-superficie-suave text-publico-tinta-suave'
+                      : esSeleccionado
+                        ? 'cursor-pointer border-publico-acento-hondo bg-publico-acento-tenue'
+                        : 'cursor-pointer border-publico-linea bg-publico-superficie hover:border-publico-linea-fuerte'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="tecnico_elegido"
+                    value={tec.id}
+                    checked={esSeleccionado}
+                    disabled={!seleccionable || asignando}
+                    onChange={() => setTecnicoSeleccionadoId(tec.id)}
+                    className="sr-only"
+                  />
+                  <span aria-hidden="true" className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-bold ${seleccionable ? 'bg-publico-panel text-publico-acento' : 'bg-publico-linea text-publico-tinta-suave'}`}>
+                    {iniciales(tec.nombreCompleto)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className={`font-bold ${seleccionable ? 'text-publico-tinta' : ''}`}>{tec.nombreCompleto}</span>
+                      {tec.id === recomendadoId && (
+                        <span className="rounded-md bg-publico-panel px-1.5 py-0.5 text-xs font-bold text-publico-acento">Recomendado</span>
                       )}
-                    </div>
-                  </label>
-                )
-              })
-            )}
-          </fieldset>
-        )}
-      </div>
-
-      <div className="shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 border-t border-linea pt-4">
-        <Boton
-          type="button"
-          variante="secundario"
-          disabled={asignando}
-          onClick={() => dialogRef.current?.close()}
-          className="w-full sm:w-auto min-h-[44px]"
-        >
-          Cancelar
-        </Boton>
-        <Boton
-          type="button"
-          variante="principal"
-          cargando={asignando}
-          disabled={!idSeleccionadoFinal || asignando || cargandoTecnicos}
-          onClick={manejarAsignar}
-          className="w-full sm:w-auto min-h-[44px]"
-        >
-          Asignar y enviar correo al técnico
-        </Boton>
-      </div>
-    </dialog>
+                    </span>
+                    <span className="mt-0.5 block text-sm">
+                      {motivo ? (
+                        <span className="font-bold text-publico-peligro">{motivo}</span>
+                      ) : (
+                        <span className="text-publico-tinta-media">{cargaTexto(tec.ordenesHoy)} · {tec.especialidades.map((e) => ESPECIALIDAD_CORTA[e]).join(', ')}</span>
+                      )}
+                    </span>
+                  </span>
+                  <span aria-hidden="true" className={`grid size-6 shrink-0 place-items-center rounded-2xl border-2 ${esSeleccionado ? 'border-publico-tinta bg-publico-tinta text-publico-acento' : 'border-publico-linea-fuerte bg-publico-superficie'}`}>
+                    {esSeleccionado && <Icono nombre="visto" className="size-3.5" />}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+          <p className="mt-4 flex items-start gap-2 text-sm text-publico-tinta-media">
+            <Icono nombre="correo" className="mt-0.5 size-4 shrink-0" />
+            Le llegará un correo con la dirección y la falla, y botones para confirmar y avisar cuando salga.
+          </p>
+        </fieldset>
+      )}
+    </DialogoPanel>
   )
 }

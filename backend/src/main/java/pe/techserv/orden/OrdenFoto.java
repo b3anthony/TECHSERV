@@ -3,7 +3,10 @@ package pe.techserv.orden;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
-/** Una foto de la averia. Lo que evita que el tecnico llegue sin la pieza. */
+/**
+ * Una foto de la orden. Las del cliente muestran la averia (lo que evita que el
+ * tecnico llegue sin la pieza); las del tecnico, el trabajo terminado.
+ */
 @Entity
 @Table(name = "orden_foto")
 public class OrdenFoto {
@@ -29,6 +32,10 @@ public class OrdenFoto {
     @Column(name = "tamano_bytes", nullable = false)
     private long tamanoBytes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private OrigenFoto origen = OrigenFoto.CLIENTE;
+
     @Column(name = "subida_en", nullable = false)
     private OffsetDateTime subidaEn = OffsetDateTime.now();
 
@@ -44,6 +51,8 @@ public class OrdenFoto {
     public void setTipoMime(String tipoMime) { this.tipoMime = tipoMime; }
     public long getTamanoBytes() { return tamanoBytes; }
     public void setTamanoBytes(long tamanoBytes) { this.tamanoBytes = tamanoBytes; }
+    public OrigenFoto getOrigen() { return origen; }
+    public void setOrigen(OrigenFoto origen) { this.origen = origen; }
     public OffsetDateTime getSubidaEn() { return subidaEn; }
     public void setSubidaEn(OffsetDateTime subidaEn) { this.subidaEn = subidaEn; }
 }

@@ -13,7 +13,9 @@ public record DetallePago(
         MetodoPago metodo,
         BigDecimal monto,
         EstadoPago estado,
-        OffsetDateTime pagadoEn
+        OffsetDateTime pagadoEn,
+        /** Nombre del tecnico que cobro en el domicilio; null si lo registro el taller. */
+        String cobradoPor
 ) {
     public static DetallePago de(Pago p) {
         return new DetallePago(
@@ -22,7 +24,8 @@ public record DetallePago(
                 p.getMetodo(),
                 p.getMonto(),
                 p.getEstado(),
-                p.getPagadoEn()
+                p.getPagadoEn(),
+                p.getCobradoPor() == null ? null : p.getCobradoPor().getUsuario().getNombreCompleto()
         );
     }
 }

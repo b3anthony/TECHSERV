@@ -202,6 +202,13 @@ class AdministracionTest extends BasePruebaIntegracion {
         assertThat(tecnicoEnBd.isDisponible()).isFalse();
         Usuario usuarioEnBd = usuarios.findByEmailIgnoreCase(correo).orElseThrow();
         assertThat(usuarioEnBd.isActivo()).isFalse();
+        // Dado de baja, ya no aparece en el equipo ni para asignar
+        mvc.perform(get("/api/panel/tecnicos")
+                        .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.email=='%s')]".formatted(correo)).doesNotExist())
+                .andExpect(jsonPath("$[?(@.email=='luis.ramirez@serviciosdelgado.pe')].nombres").value("Luis"))
+                .andExpect(jsonPath("$[?(@.email=='luis.ramirez@serviciosdelgado.pe')].apellidos").value("Ramírez"));
     }
 
     @Test

@@ -6,6 +6,7 @@ import pe.techserv.comun.ConflictoEstado;
 import pe.techserv.comun.RecursoNoEncontrado;
 import pe.techserv.comun.SolicitudInvalida;
 import pe.techserv.mype.Repuesto;
+import pe.techserv.mype.Tecnico;
 import pe.techserv.mype.RepuestoRepository;
 import pe.techserv.orden.ActorHistorial;
 import pe.techserv.orden.EstadoOrden;
@@ -55,7 +56,13 @@ public class ServicioCierre {
 
     @Transactional
     public OrdenDetalle pasarAEnProceso(Long mypeId, Long ordenId) {
-        OrdenServicio orden = ordenes.findByIdAndMypeId(ordenId, mypeId)
+        return pasarAEnProceso(mypeId, ordenId, ActorHistorial.ADMIN_MYPE, "El técnico empezó el trabajo");
+    }
+
+    /** Lo mismo, diciendo quien lo hizo: el taller desde el panel o el tecnico desde su pagina. */
+    @Transactional
+    public OrdenDetalle pasarAEnProceso(Long mypeId, Long ordenId, ActorHistorial actor, String nota) {
+        OrdenServicio orden = ordenes.bloquear(ordenId, mypeId)
                 .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
 
         if (!orden.getEstado().permite(EstadoOrden.EN_PROCESO)) {
@@ -68,15 +75,20 @@ public class ServicioCierre {
         orden.setEstado(EstadoOrden.EN_PROCESO);
         ordenes.save(orden);
 
-        anotar(orden, anterior, EstadoOrden.EN_PROCESO, ActorHistorial.ADMIN_MYPE,
-                "El técnico empezó el trabajo");
+        anotar(orden, anterior, EstadoOrden.EN_PROCESO, actor, nota);
 
         return OrdenDetalle.de(orden);
     }
 
     @Transactional
     public OrdenDetalle cerrar(Long mypeId, Long ordenId, CierreOrden peticion) {
-        OrdenServicio orden = ordenes.findByIdAndMypeId(ordenId, mypeId)
+        return cerrar(mypeId, ordenId, peticion, ActorHistorial.ADMIN_MYPE, "El taller cerró la orden");
+    }
+
+    @Transactional
+    public OrdenDetalle cerrar(Long mypeId, Long ordenId, CierreOrden peticion,
+                               ActorHistorial actor, String nota) {
+        OrdenServicio orden = ordenes.bloquear(ordenId, mypeId)
                 .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
 
         boolean puedeCerrar = (orden.getEstado() == EstadoOrden.EN_PROCESO)
@@ -134,8 +146,7 @@ public class ServicioCierre {
         if (orden.getEstado() == EstadoOrden.EN_PROCESO) {
             orden.setEstado(EstadoOrden.COMPLETADA);
             ordenes.save(orden);
-            anotar(orden, EstadoOrden.EN_PROCESO, EstadoOrden.COMPLETADA, ActorHistorial.ADMIN_MYPE,
-                    "El taller cerró la orden");
+            anotar(orden, EstadoOrden.EN_PROCESO, EstadoOrden.COMPLETADA, actor, nota);
         } else {
             ordenes.save(orden);
         }
@@ -143,9 +154,29 @@ public class ServicioCierre {
         return OrdenDetalle.de(orden);
     }
 
+    /**
+     * El pago de una orden, si ya se registró. Acotado por mype como todo lo
+     * demás: la orden de otro taller responde 404, igual que una inexistente.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<DetallePago> pagoDe(Long mypeId, Long ordenId) {
+        OrdenServicio orden = ordenes.findByIdAndMypeId(ordenId, mypeId)
+                .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
+        return pagos.findByOrdenId(orden.getId()).map(DetallePago::de);
+    }
+
     @Transactional
     public DetallePago registrarPago(Long mypeId, Long ordenId, RegistroPago peticion) {
-        OrdenServicio orden = ordenes.findByIdAndMypeId(ordenId, mypeId)
+        return registrarPago(mypeId, ordenId, peticion, null);
+    }
+
+    /**
+     * @param cobradoPor el tecnico que recibio el dinero en el domicilio, o null
+     *                   si lo registra el taller desde el panel
+     */
+    @Transactional
+    public DetallePago registrarPago(Long mypeId, Long ordenId, RegistroPago peticion, Tecnico cobradoPor) {
+        OrdenServicio orden = ordenes.bloquear(ordenId, mypeId)
                 .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
 
         boolean valida = (orden.getEstado() == EstadoOrden.COMPLETADA || orden.getEstado() == EstadoOrden.CALIFICADA)
@@ -164,6 +195,7 @@ public class ServicioCierre {
         pago.setMonto(orden.getTotal());
         pago.setEstado(EstadoPago.PAGADO);
         pago.setPagadoEn(OffsetDateTime.now());
+        pago.setCobradoPor(cobradoPor);
         pagos.save(pago);
 
         return DetallePago.de(pago);

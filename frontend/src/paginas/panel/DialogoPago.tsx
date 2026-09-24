@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { api, mensajeDeError } from '../../api/cliente.ts'
-import { Boton } from '../../componentes/Boton.tsx'
-import { Selector } from '../../componentes/Selector.tsx'
+import { Aviso } from '../../componentes/publico/Aviso.tsx'
+import { Boton } from '../../componentes/publico/Boton.tsx'
+import { DialogoPanel } from './comun.tsx'
+import { soles } from './formato.ts'
 import type { MetodoPago } from './tiposPanel.ts'
 
 interface DialogoPagoProps {
@@ -27,21 +29,6 @@ export function DialogoPago({
   const [registrando, setRegistrando] = useState(false)
   const [errorPago, setErrorPago] = useState<string | null>(null)
 
-  useEffect(() => {
-    const el = dialogRef.current
-    if (!el) return
-
-    if (abierto) {
-      if (!el.open) {
-        el.showModal()
-      }
-    } else {
-      if (el.open) {
-        el.close()
-      }
-    }
-  }, [abierto])
-
   function manejarCerrar(): void {
     setErrorPago(null)
     setMetodo('EFECTIVO')
@@ -63,80 +50,47 @@ export function DialogoPago({
     }
   }
 
+  const metodos: { valor: MetodoPago; texto: string }[] = [
+    { valor: 'EFECTIVO', texto: 'Efectivo' },
+    { valor: 'YAPE', texto: 'Yape' },
+    { valor: 'PLIN', texto: 'Plin' },
+    { valor: 'TRANSFERENCIA', texto: 'Transferencia' },
+  ]
+
   return (
-    <dialog
+    <DialogoPanel
       ref={dialogRef}
-      onClose={manejarCerrar}
-      className="m-auto w-[calc(100%-2rem)] max-w-md max-h-[calc(100dvh-2rem)] rounded-2xl border border-linea bg-superficie p-5 sm:p-6 shadow-xl backdrop:bg-tinta/50 text-tinta flex flex-col my-auto"
+      abierto={abierto}
+      alCerrar={manejarCerrar}
+      ocupado={registrando}
+      ancho="md"
+      titulo="Registrar pago"
+      detalle={<><span className="font-bold text-publico-tinta">{codigoOrden}</span> · ¿cómo te pagó el cliente?</>}
+      pie={
+        <>
+          <Boton type="button" variante="secundario" disabled={registrando} onClick={() => dialogRef.current?.close()}>Cancelar</Boton>
+          <Boton type="button" cargando={registrando} disabled={registrando} onClick={manejarRegistrarPago}>Registrar {soles(total)}</Boton>
+        </>
+      }
     >
-      <div className="shrink-0 flex items-start justify-between border-b border-linea pb-4">
-        <div>
-          <h2 className="text-lg font-bold text-tinta">Registrar pago</h2>
-          <p className="mt-1 text-xs text-tinta-suave">
-            Orden <span className="font-semibold text-tinta">{codigoOrden}</span> — Registrar cobro del servicio.
-          </p>
+      {errorPago && <Aviso tipo="error" className="mb-4">{errorPago}</Aviso>}
+
+      <div className="rounded-xl bg-publico-panel px-4 py-5 text-center text-publico-superficie">
+        <p className="text-sm text-publico-superficie/70">Monto a cobrar</p>
+        <p className="mt-1 text-3xl font-bold text-publico-acento tabular-nums">{soles(total)}</p>
+      </div>
+
+      <fieldset className="mt-5">
+        <legend className="mb-2 text-sm font-bold">Método de pago</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {metodos.map((m) => (
+            <label key={m.valor} className={`flex min-h-13 cursor-pointer items-center justify-center rounded-xl border-2 px-3 text-sm font-bold has-[:focus]:ring-2 has-[:focus]:ring-publico-acento has-[:focus]:ring-offset-2 has-[:focus]:ring-offset-publico-superficie ${metodo === m.valor ? 'border-publico-tinta bg-publico-panel text-publico-superficie' : 'border-publico-linea hover:border-publico-linea-fuerte'}`}>
+              <input type="radio" name={`metodo-pago-${ordenId}`} value={m.valor} checked={metodo === m.valor} onChange={() => setMetodo(m.valor)} className="sr-only" />
+              {m.texto}
+            </label>
+          ))}
         </div>
-        <button
-          type="button"
-          onClick={() => dialogRef.current?.close()}
-          disabled={registrando}
-          aria-label="Cerrar ventana de cobro"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg p-2 text-tinta-suave hover:bg-superficie-suave hover:text-tinta focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-superficie"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="overflow-y-auto flex-1 min-h-0 space-y-4 py-4">
-        {errorPago && (
-          <div role="alert" className="rounded-lg border border-peligro bg-superficie p-3 text-xs text-peligro">
-            {errorPago}
-          </div>
-        )}
-
-        <div className="rounded-xl border border-linea bg-superficie-suave p-4 text-center">
-          <span className="block text-xs font-medium text-tinta-suave">Monto total a cobrar</span>
-          <span className="mt-1 block text-2xl font-bold text-tinta">
-            S/ {total.toFixed(2)}
-          </span>
-        </div>
-
-        <Selector
-          etiqueta="Método de pago"
-          value={metodo}
-          onChange={(e) => setMetodo(e.target.value as MetodoPago)}
-        >
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="YAPE">Yape</option>
-          <option value="PLIN">Plin</option>
-          <option value="TRANSFERENCIA">Transferencia bancaria</option>
-        </Selector>
-      </div>
-
-      <div className="shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 border-t border-linea pt-4">
-        <Boton
-          type="button"
-          variante="secundario"
-          disabled={registrando}
-          onClick={() => dialogRef.current?.close()}
-          className="w-full sm:w-auto min-h-[44px]"
-        >
-          Cancelar
-        </Boton>
-        <Boton
-          type="button"
-          variante="principal"
-          cargando={registrando}
-          disabled={registrando}
-          onClick={manejarRegistrarPago}
-          className="w-full sm:w-auto min-h-[44px]"
-        >
-          Registrar cobro
-        </Boton>
-      </div>
-    </dialog>
+      </fieldset>
+    </DialogoPanel>
   )
 }

@@ -1,7 +1,9 @@
 package pe.techserv.panel;
 
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,5 +47,14 @@ public class ControladorCierre {
                                      @PathVariable Long id,
                                      @Valid @RequestBody RegistroPago peticion) {
         return cierre.registrarPago(usuario.mypeIdObligatorio(), id, peticion);
+    }
+
+    /** 200 con el pago si ya se cobró; 204 si todavía no. */
+    @GetMapping("/ordenes/{id}/pago")
+    public ResponseEntity<DetallePago> pago(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                            @PathVariable Long id) {
+        return cierre.pagoDe(usuario.mypeIdObligatorio(), id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 }

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { useSesion } from '../sesion/SesionProvider.tsx'
-import { Campo } from '../componentes/Campo.tsx'
-import { Boton } from '../componentes/Boton.tsx'
+import { CampoTexto } from '../componentes/publico/CampoTexto.tsx'
+import { Boton } from '../componentes/publico/Boton.tsx'
+import { Aviso } from '../componentes/publico/Aviso.tsx'
+import { TarjetaAcceso } from '../componentes/publico/TarjetaAcceso.tsx'
 import { mensajeDeError } from '../api/cliente.ts'
 import type { ErrorApi } from '../tipos.ts'
-import axios from 'axios'
 
 export function Entrar(): ReactNode {
   const { entrar } = useSesion()
@@ -48,20 +50,22 @@ export function Entrar(): ReactNode {
   }
 
   return (
-    <main className="mx-auto max-w-sm px-4 py-16">
-      <h1 className="text-xl font-bold text-tinta">Iniciar sesión</h1>
-      <p className="mt-1 text-sm text-tinta-suave">
-        Ingresa a tu cuenta de TechServ.
+    <TarjetaAcceso tituloId="titulo-entrar">
+      <p className="mb-6 text-sm text-publico-tinta-suave">
+        <Link to="/" className="rounded-sm underline decoration-publico-acento decoration-2 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie">Inicio</Link> / Iniciar sesión
       </p>
+      <h1 id="titulo-entrar" className="text-[clamp(2rem,1.4rem+2vw,2.75rem)] leading-[1.13] font-bold tracking-[-0.03em]">Iniciar sesión</h1>
+      <p className="mt-2 text-publico-tinta-media">Entra a tu cuenta para continuar en TechServ.</p>
 
-      <form onSubmit={manejarEnvio} className="mt-6 space-y-4" noValidate>
-        {errorGeneral && (
-          <div role="alert" className="rounded-lg border border-peligro bg-superficie p-3 text-sm text-peligro">
-            {errorGeneral}
-          </div>
-        )}
+      {desde === '/reservar' && (
+        <Aviso tipo="info" className="mt-6">Inicia sesión para confirmar tu reserva. Lo que elegiste sigue guardado.</Aviso>
+      )}
 
-        <Campo
+      <form onSubmit={manejarEnvio} className="mt-6 grid gap-3" noValidate>
+        {errorGeneral && <Aviso tipo="error">{errorGeneral}</Aviso>}
+
+        <CampoTexto
+          id="correo-entrar"
           etiqueta="Correo electrónico"
           type="email"
           autoComplete="email"
@@ -71,7 +75,8 @@ export function Entrar(): ReactNode {
           error={errores['email']}
         />
 
-        <Campo
+        <CampoTexto
+          id="clave-entrar"
           etiqueta="Contraseña"
           type="password"
           autoComplete="current-password"
@@ -81,20 +86,15 @@ export function Entrar(): ReactNode {
           error={errores['clave']}
         />
 
-        <Boton type="submit" cargando={enviando} className="w-full">
+        <Boton type="submit" cargando={enviando} className="mt-5 min-h-13 w-full">
           Entrar
         </Boton>
       </form>
 
-      <p className="mt-4 text-center text-sm text-tinta-suave">
+      <p className="mt-6 text-sm text-publico-tinta-media">
         ¿No tienes cuenta?{' '}
-        <a
-          href="/registro"
-          className="inline-block py-2 px-1 font-semibold text-accion underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo rounded"
-        >
-          Regístrate
-        </a>
+        <Link to="/registro" className="inline-flex min-h-11 items-center rounded-sm font-bold text-publico-tinta underline decoration-publico-acento decoration-2 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie">Crear cuenta</Link>
       </p>
-    </main>
+    </TarjetaAcceso>
   )
 }

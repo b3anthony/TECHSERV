@@ -6,6 +6,8 @@ import java.util.Set;
 
 public record TecnicoDisponible(Long id,
                                 String nombreCompleto,
+                                String nombres,
+                                String apellidos,
                                 String email,
                                 String telefono,
                                 boolean disponible,

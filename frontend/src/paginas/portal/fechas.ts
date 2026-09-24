@@ -1,4 +1,4 @@
-const MESES_ESPANOL = [
+export const MESES_ESPANOL = [
   'enero',
   'febrero',
   'marzo',
@@ -68,4 +68,30 @@ export function hoyString(): string {
   const mes = String(ahora.getMonth() + 1).padStart(2, '0')
   const dia = String(ahora.getDate()).padStart(2, '0')
   return `${anio}-${mes}-${dia}`
+}
+
+const DIAS_ESPANOL = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+/**
+ * Fecha YYYY-MM-DD como la diría una persona: "hoy", "mañana", "ayer" o
+ * "sábado 19 de setiembre" (con el año solo si no es el actual).
+ */
+export function fechaAmigable(fechaStr?: string | null): string {
+  if (!fechaStr) return 'fecha por confirmar'
+  const [anio, mes, dia] = fechaStr.split('-').map((x) => parseInt(x, 10))
+  if (!anio || !mes || !dia) return fechaStr
+  const fecha = new Date(anio, mes - 1, dia)
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const diferencia = Math.round((fecha.getTime() - hoy.getTime()) / 86_400_000)
+  if (diferencia === 0) return 'hoy'
+  if (diferencia === 1) return 'mañana'
+  if (diferencia === -1) return 'ayer'
+  const base = `${DIAS_ESPANOL[fecha.getDay()]} ${dia} de ${MESES_ESPANOL[mes - 1]}`
+  return anio === hoy.getFullYear() ? base : `${base} de ${anio}`
+}
+
+/** "14:00:00" → "14:00". */
+export function horaCorta(horaStr?: string | null): string {
+  return horaStr ? horaStr.substring(0, 5) : ''
 }

@@ -1,110 +1,101 @@
 <!DOCTYPE html>
+<!--
+  Los colores van escritos a mano y en linea porque los clientes de correo no
+  leen hojas de estilo ni variables CSS. Son los mismos valores que los tokens
+  publico-* de frontend/src/index.css: si la marca cambia, cambia tambien aqui.
+-->
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nueva orden asignada</title>
+  <title>Nueva visita asignada</title>
 </head>
-<body style="margin: 0; padding: 24px 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
-  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc;">
+<body style="margin: 0; padding: 24px 0; background-color: #f6f5f2; font-family: Inter, 'Segoe UI', -apple-system, Roboto, Helvetica, Arial, sans-serif; color: #16181d;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f6f5f2;">
     <tr>
-      <td align="center">
-        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin: 0 auto;">
-          <!-- Encabezado -->
+      <td align="center" style="padding: 0 12px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border: 1px solid #e4e1da; border-radius: 16px; overflow: hidden; margin: 0 auto;">
+          <!-- Encabezado oscuro, como la pagina -->
           <tr>
-            <td style="padding: 24px 32px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
-              <h1 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #0f172a;">
-                Orden <span th:text="${orden.codigo}">ORD-0000</span>
+            <td style="padding: 28px 28px 24px; background-color: #121418;">
+              <p style="margin: 0 0 14px 0; font-size: 13px; font-weight: 700; color: #ffc21a; letter-spacing: 0.04em;">
+                TECHSERV · <span th:text="${orden.mype.razonSocial}">Taller</span>
+              </p>
+              <h1 style="margin: 0; font-size: 24px; line-height: 1.25; font-weight: 700; color: #ffffff;">
+                Tienes una visita nueva, <span th:text="${orden.tecnico.usuario.nombres}">Luis</span>
               </h1>
-              <p style="margin: 0; font-size: 14px; font-weight: 600; color: #1d4ed8;" th:text="${orden.especialidad.titulo}">
-                Especialidad
+              <p style="margin: 10px 0 0 0; font-size: 15px; color: #cfcac0;">
+                <span th:text="${orden.especialidad.titulo}">Especialidad</span> · Orden <span th:text="${orden.codigo}">ORD-0000</span>
               </p>
             </td>
           </tr>
 
-          <!-- Contenido -->
+          <!-- Boton principal -->
           <tr>
-            <td style="padding: 24px 32px;">
+            <td style="padding: 24px 28px 8px;">
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                <!-- Fecha y Hora -->
                 <tr>
-                  <td style="padding-bottom: 16px;">
-                    <strong style="display: block; font-size: 13px; color: #475569; margin-bottom: 4px;">Fecha y hora programadas</strong>
-                    <span style="font-size: 15px; color: #0f172a;">
+                  <td align="center" style="border-radius: 12px; background-color: #ffc21a;">
+                    <a th:href="${enlaceVisita}" target="_blank" style="display: block; padding: 16px 24px; color: #16181d; text-align: center; text-decoration: none; font-size: 17px; font-weight: 700; border-radius: 12px;">
+                      Abrir mi orden
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 12px 0 0 0; font-size: 13px; line-height: 1.5; color: #4a4f5a; text-align: center;">
+                Ahí confirmas la visita, avisas cuando sales y cuando llegas, cierras el trabajo, registras el cobro y subes fotos.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Datos de la visita -->
+          <tr>
+            <td style="padding: 20px 28px 8px;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f6f5f2; border-radius: 12px;">
+                <tr>
+                  <td style="padding: 16px 18px; border-bottom: 1px solid #e4e1da;">
+                    <strong style="display: block; font-size: 12px; color: #646977; margin-bottom: 4px;">CUÁNDO</strong>
+                    <span style="font-size: 16px; font-weight: 700; color: #16181d;">
                       <span th:text="${#temporals.format(orden.fechaProgramada, 'dd/MM/yyyy')}">01/01/2026</span> a las <span th:text="${#temporals.format(orden.horaProgramada, 'HH:mm')}">10:00</span>
                     </span>
                   </td>
                 </tr>
-
-                <!-- Cliente -->
                 <tr>
-                  <td style="padding-bottom: 16px;">
-                    <strong style="display: block; font-size: 13px; color: #475569; margin-bottom: 4px;">Cliente</strong>
-                    <span style="font-size: 15px; color: #0f172a;" th:text="${orden.cliente.usuario.nombreCompleto}">Nombre del cliente</span><br>
-                    <span style="font-size: 14px; color: #475569;" th:text="${orden.cliente.usuario.telefono}">Teléfono</span>
-                  </td>
-                </tr>
-
-                <!-- Dirección y Mapa -->
-                <tr>
-                  <td style="padding-bottom: 16px;">
-                    <strong style="display: block; font-size: 13px; color: #475569; margin-bottom: 4px;">Dirección</strong>
-                    <span style="font-size: 15px; color: #0f172a;" th:text="${orden.direccion}">Dirección</span><br>
-                    <span th:if="${orden.referencia != null}" style="font-size: 14px; color: #475569;">
-                      Ref: <span th:text="${orden.referencia}">Referencia</span><br>
+                  <td style="padding: 16px 18px; border-bottom: 1px solid #e4e1da;">
+                    <strong style="display: block; font-size: 12px; color: #646977; margin-bottom: 4px;">DÓNDE</strong>
+                    <span style="font-size: 15px; color: #16181d;" th:text="${orden.direccion}">Dirección</span><br>
+                    <span th:if="${orden.referencia != null}" style="font-size: 14px; color: #4a4f5a;">
+                      Ref.: <span th:text="${orden.referencia}">Referencia</span><br>
                     </span>
-                    <span style="font-size: 14px; color: #475569;" th:text="${orden.distrito}">Distrito</span><br>
-                    <div style="margin-top: 8px;">
-                      <a th:href="${orden.urlMapa()}" target="_blank" rel="noopener noreferrer" style="font-size: 14px; color: #1d4ed8; text-decoration: underline; font-weight: 600;">Ver en el mapa</a>
-                    </div>
+                    <span style="font-size: 14px; color: #4a4f5a;" th:text="${orden.distrito}">Distrito</span><br>
+                    <a th:href="${orden.urlMapa()}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 8px; font-size: 14px; color: #16181d; text-decoration: underline; font-weight: 700;">Ver en el mapa</a>
                   </td>
                 </tr>
-
-                <!-- Descripción de la falla -->
                 <tr>
-                  <td style="padding-bottom: 24px;">
-                    <strong style="display: block; font-size: 13px; color: #475569; margin-bottom: 4px;">Descripción de la falla</strong>
-                    <p style="margin: 0; font-size: 15px; color: #0f172a; line-height: 1.5; white-space: pre-line;" th:text="${orden.descripcionFalla}">
+                  <td style="padding: 16px 18px; border-bottom: 1px solid #e4e1da;">
+                    <strong style="display: block; font-size: 12px; color: #646977; margin-bottom: 4px;">CLIENTE</strong>
+                    <span style="font-size: 15px; color: #16181d;" th:text="${orden.cliente.usuario.nombreCompleto}">Nombre del cliente</span><br>
+                    <span style="font-size: 14px; color: #4a4f5a;" th:text="${orden.cliente.usuario.telefono}">Teléfono</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 18px;">
+                    <strong style="display: block; font-size: 12px; color: #646977; margin-bottom: 4px;">LO QUE CONTÓ EL CLIENTE</strong>
+                    <p style="margin: 0; font-size: 15px; color: #16181d; line-height: 1.5; white-space: pre-line;" th:text="${orden.descripcionFalla}">
                       Detalle de la falla
                     </p>
                   </td>
                 </tr>
-
-                <!-- Botones de acción -->
-                <tr>
-                  <td align="center" style="padding-top: 8px; padding-bottom: 24px; border-top: 1px solid #e2e8f0;">
-                    <!-- Botón Confirmar recepción -->
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 12px;">
-                      <tr>
-                        <td align="center">
-                          <a th:href="${enlaceConfirmar}" target="_blank" style="display: block; width: 100%; max-width: 320px; padding: 12px 24px; background-color: #1d4ed8; color: #ffffff; text-align: center; text-decoration: none; font-size: 15px; font-weight: 600; border-radius: 6px; box-sizing: border-box;">
-                            Confirmar recepción
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                    <!-- Botón Voy en camino -->
-                    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                      <tr>
-                        <td align="center">
-                          <a th:href="${enlaceEnCamino}" target="_blank" style="display: block; width: 100%; max-width: 320px; padding: 12px 24px; background-color: #ffffff; color: #1d4ed8; border: 2px solid #1d4ed8; text-align: center; text-decoration: none; font-size: 15px; font-weight: 600; border-radius: 6px; box-sizing: border-box;">
-                            Voy en camino
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- Pie del correo -->
-                <tr>
-                  <td style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center;">
-                    <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.4;">
-                      Estos enlaces caducan a las <span th:text="${horas}">72</span> horas y cada uno sirve una sola vez.
-                    </p>
-                  </td>
-                </tr>
               </table>
+            </td>
+          </tr>
+
+          <!-- Pie -->
+          <tr>
+            <td style="padding: 16px 28px 24px;">
+              <p style="margin: 0; font-size: 12px; color: #646977; line-height: 1.5; text-align: center;">
+                El enlace es solo para ti: no lo reenvíes. Vale <span th:text="${dias}">30</span> días.
+              </p>
             </td>
           </tr>
         </table>

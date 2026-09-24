@@ -21,6 +21,8 @@ import pe.techserv.orden.OrdenHistorial;
 import pe.techserv.orden.OrdenHistorialRepository;
 import pe.techserv.orden.OrdenServicio;
 import pe.techserv.orden.OrdenServicioRepository;
+import pe.techserv.visita.EnlaceTecnico;
+import pe.techserv.visita.EnlaceTecnicoRepository;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -51,6 +53,7 @@ class TokenAccionTest extends BasePruebaIntegracion {
     @Autowired AccionTokenRepository tokens;
     @Autowired OrdenServicioRepository ordenes;
     @Autowired OrdenHistorialRepository historial;
+    @Autowired EnlaceTecnicoRepository enlaces;
 
     @BeforeEach
     void preparar() {
@@ -63,10 +66,11 @@ class TokenAccionTest extends BasePruebaIntegracion {
 
     @Test
     @org.springframework.transaction.annotation.Transactional
-    @DisplayName("El correo de asignación se envía con los datos de la orden y genera dos tokens firmados")
+    @DisplayName("El correo de asignación lleva los datos de la orden y un solo enlace a la página del técnico")
     void envioDeCorreoDeAsignacion() throws Exception {
         OrdenServicio orden = ordenes.findByCodigo("ORD-0139").orElseThrow();
         String emailTecnico = orden.getTecnico().getUsuario().getEmail();
+        int enlacesAntes = enlaces.findByOrdenId(orden.getId()).size();
 
         servicioCorreo.avisarAsignacion(orden);
 
@@ -76,26 +80,25 @@ class TokenAccionTest extends BasePruebaIntegracion {
 
         assertThat(enviado.getAllRecipients()).isNotEmpty();
         assertThat(enviado.getAllRecipients()[0].toString()).contains(emailTecnico);
-        assertThat(enviado.getSubject()).isEqualTo("TechServ · Nueva orden " + orden.getCodigo() + " asignada");
+        assertThat(enviado.getSubject()).contains(orden.getCodigo());
 
         String html = extraerTexto(enviado);
         assertThat(html).contains(orden.getDireccion());
         assertThat(html).contains(orden.getCliente().getUsuario().getTelefono());
 
-        Pattern patronEnlace = Pattern.compile("/t/accion\\?token=([a-zA-Z0-9_\\.\\-]+)");
-        Matcher matcher = patronEnlace.matcher(html);
-        List<String> tokensEncontrados = new ArrayList<>();
+        Matcher matcher = Pattern.compile("/visita/([A-Za-z0-9_\\-]{43})").matcher(html);
+        List<String> encontrados = new ArrayList<>();
         while (matcher.find()) {
-            tokensEncontrados.add(matcher.group(1));
+            encontrados.add(matcher.group(1));
         }
-        assertThat(tokensEncontrados).hasSize(2);
-        assertThat(tokensEncontrados.get(0)).isNotEqualTo(tokensEncontrados.get(1));
+        assertThat(encontrados).hasSize(1);
+        assertThat(html).doesNotContain("/t/accion");
 
-        List<AccionToken> filas = tokens.findByOrdenId(orden.getId());
-        assertThat(filas).hasSize(2);
-        assertThat(filas).extracting(AccionToken::getAccion)
-                .containsExactlyInAnyOrder(AccionTecnico.CONFIRMAR, AccionTecnico.EN_CAMINO);
-        assertThat(filas).allMatch(f -> !f.estaUsado() && f.getUsadoEn() == null);
+        // Se guarda el hash, nunca el token.
+        List<EnlaceTecnico> filas = enlaces.findByOrdenId(orden.getId());
+        assertThat(filas).hasSize(enlacesAntes + 1);
+        assertThat(filas).noneMatch(f -> f.getHashToken().equals(encontrados.get(0)));
+        assertThat(tokens.findByOrdenId(orden.getId())).isEmpty();
     }
 
     @Test

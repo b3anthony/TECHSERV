@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSesion } from '../sesion/SesionProvider.tsx'
 import { api, guardarSesion, mensajeDeError } from '../api/cliente.ts'
-import { Campo } from '../componentes/Campo.tsx'
-import { AreaTexto } from '../componentes/AreaTexto.tsx'
-import { Selector } from '../componentes/Selector.tsx'
-import { Boton } from '../componentes/Boton.tsx'
+import { CampoTexto } from '../componentes/publico/CampoTexto.tsx'
+import { AreaTexto } from '../componentes/publico/AreaTexto.tsx'
+import { Selector } from '../componentes/publico/Selector.tsx'
+import { Boton } from '../componentes/publico/Boton.tsx'
+import { Aviso } from '../componentes/publico/Aviso.tsx'
+import { TarjetaAcceso } from '../componentes/publico/TarjetaAcceso.tsx'
 import type { ErrorApi, RespuestaSesion } from '../tipos.ts'
 import axios from 'axios'
 
@@ -16,43 +18,49 @@ export function Registro(): ReactNode {
   const [pestana, setPestana] = useState<Pestana>('cliente')
 
   return (
-    <main className="mx-auto max-w-lg px-4 py-16">
-      <h1 className="text-xl font-bold text-tinta">Crear cuenta</h1>
-      <p className="mt-1 text-sm text-tinta-suave">
-        Elige el tipo de cuenta que necesitas.
+    <TarjetaAcceso tituloId="titulo-registro">
+      <p className="mb-6 text-sm text-publico-tinta-suave">
+        <Link to="/" className="rounded-sm underline decoration-publico-acento decoration-2 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie">Inicio</Link> / Crear cuenta
       </p>
+      <h1 id="titulo-registro" className="text-3xl font-bold leading-tight tracking-tight text-publico-tinta sm:text-4xl">Crear cuenta</h1>
+      <p className="mt-2 text-base text-publico-tinta-media">Elige el tipo de cuenta que necesitas.</p>
 
-      <div className="mt-6 flex gap-1 rounded-lg border border-linea bg-superficie-suave p-1" role="tablist">
+      <div className="mt-6 flex gap-1 rounded-lg border border-publico-linea bg-publico-superficie-suave p-1" role="tablist" aria-label="Tipo de cuenta">
         <button
+          id="pestana-cliente"
+          type="button"
           role="tab"
+          aria-controls="panel-registro"
           aria-selected={pestana === 'cliente'}
           onClick={() => setPestana('cliente')}
-          className={`flex-1 min-h-[44px] inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${pestana === 'cliente' ? 'bg-superficie text-tinta shadow-sm' : 'text-tinta-suave'}`}
+          className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie ${pestana === 'cliente' ? 'bg-publico-superficie text-publico-tinta shadow-sm' : 'text-publico-tinta-media hover:text-publico-tinta'}`}
         >
           Cliente
         </button>
         <button
+          id="pestana-negocio"
+          type="button"
           role="tab"
+          aria-controls="panel-registro"
           aria-selected={pestana === 'negocio'}
           onClick={() => setPestana('negocio')}
-          className={`flex-1 min-h-[44px] inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo ${pestana === 'negocio' ? 'bg-superficie text-tinta shadow-sm' : 'text-tinta-suave'}`}
+          className={`min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie ${pestana === 'negocio' ? 'bg-publico-superficie text-publico-tinta shadow-sm' : 'text-publico-tinta-media hover:text-publico-tinta'}`}
         >
           Negocio
         </button>
       </div>
 
-      {pestana === 'cliente' ? <FormularioCliente /> : <FormularioNegocio />}
+      <div id="panel-registro" role="tabpanel" aria-labelledby={pestana === 'cliente' ? 'pestana-cliente' : 'pestana-negocio'}>
+        {pestana === 'cliente' ? <FormularioCliente /> : <FormularioNegocio />}
+      </div>
 
-      <p className="mt-4 text-center text-sm text-tinta-suave">
+      <p className="mt-6 text-sm text-publico-tinta-media">
         ¿Ya tienes cuenta?{' '}
-        <a
-          href="/entrar"
-          className="inline-block py-2 px-1 font-semibold text-accion underline focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo rounded"
-        >
+        <Link to="/entrar" className="inline-flex min-h-11 items-center rounded-sm font-bold text-publico-tinta underline decoration-publico-acento decoration-2 underline-offset-4 focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie">
           Inicia sesión
-        </a>
+        </Link>
       </p>
-    </main>
+    </TarjetaAcceso>
   )
 }
 
@@ -109,22 +117,22 @@ function FormularioCliente(): ReactNode {
   }
 
   return (
-    <form onSubmit={manejarEnvio} className="mt-4 space-y-4" noValidate>
+    <form onSubmit={manejarEnvio} className="mt-6 space-y-1" noValidate>
       {errorGeneral && (
-        <div role="alert" className="rounded-lg border border-peligro bg-superficie p-3 text-sm text-peligro">
-          {errorGeneral}
-        </div>
+        <Aviso tipo="error">{errorGeneral}</Aviso>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <Campo
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="nombres"
           etiqueta="Nombres"
           value={campos.nombres}
           onChange={(e) => actualizar('nombres', e.target.value)}
           error={errores['nombres']}
           required
         />
-        <Campo
+        <CampoTexto
+          id="apellidos"
           etiqueta="Apellidos"
           value={campos.apellidos}
           onChange={(e) => actualizar('apellidos', e.target.value)}
@@ -133,17 +141,30 @@ function FormularioCliente(): ReactNode {
         />
       </div>
 
-      <Campo
-        etiqueta="Correo electrónico"
-        type="email"
-        autoComplete="email"
-        value={campos.email}
-        onChange={(e) => actualizar('email', e.target.value)}
-        error={errores['email']}
-        required
-      />
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="email"
+          etiqueta="Correo electrónico"
+          type="email"
+          autoComplete="email"
+          value={campos.email}
+          onChange={(e) => actualizar('email', e.target.value)}
+          error={errores['email']}
+          required
+        />
+        <CampoTexto
+          id="telefono"
+          etiqueta="Teléfono"
+          type="tel"
+          placeholder="9 dígitos"
+          value={campos.telefono}
+          onChange={(e) => actualizar('telefono', e.target.value)}
+          error={errores['telefono']}
+        />
+      </div>
 
-      <Campo
+      <CampoTexto
+        id="clave"
         etiqueta="Contraseña"
         type="password"
         autoComplete="new-password"
@@ -153,37 +174,32 @@ function FormularioCliente(): ReactNode {
         required
       />
 
-      <Campo
-        etiqueta="Teléfono"
-        type="tel"
-        value={campos.telefono}
-        onChange={(e) => actualizar('telefono', e.target.value)}
-        error={errores['telefono']}
-        placeholder="9 dígitos"
-      />
-
-      <Campo
+      <CampoTexto
+        id="direccion"
         etiqueta="Dirección"
         value={campos.direccion}
         onChange={(e) => actualizar('direccion', e.target.value)}
         error={errores['direccion']}
       />
 
-      <Campo
-        etiqueta="Referencia"
-        value={campos.referencia}
-        onChange={(e) => actualizar('referencia', e.target.value)}
-        error={errores['referencia']}
-      />
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="referencia"
+          etiqueta="Referencia"
+          value={campos.referencia}
+          onChange={(e) => actualizar('referencia', e.target.value)}
+          error={errores['referencia']}
+        />
+        <CampoTexto
+          id="distrito"
+          etiqueta="Distrito"
+          value={campos.distrito}
+          onChange={(e) => actualizar('distrito', e.target.value)}
+          error={errores['distrito']}
+        />
+      </div>
 
-      <Campo
-        etiqueta="Distrito"
-        value={campos.distrito}
-        onChange={(e) => actualizar('distrito', e.target.value)}
-        error={errores['distrito']}
-      />
-
-      <Boton type="submit" cargando={enviando} className="w-full">
+      <Boton type="submit" cargando={enviando} className="mt-4 w-full">
         Crear cuenta de cliente
       </Boton>
     </form>
@@ -272,22 +288,24 @@ function FormularioNegocio(): ReactNode {
   }
 
   return (
-    <form onSubmit={manejarEnvio} className="mt-4 space-y-4" noValidate>
+    <form onSubmit={manejarEnvio} className="mt-6 space-y-1" noValidate>
       {errorGeneral && (
-        <div role="alert" className="rounded-lg border border-peligro bg-superficie p-3 text-sm text-peligro">
-          {errorGeneral}
-        </div>
+        <Aviso tipo="error">{errorGeneral}</Aviso>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <Campo
+      <h2 className="mb-3 border-b border-publico-linea pb-2 text-xs font-bold tracking-[0.08em] text-publico-tinta-suave uppercase">Tus datos</h2>
+
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="nombres"
           etiqueta="Nombres"
           value={campos.nombres}
           onChange={(e) => actualizar('nombres', e.target.value)}
           error={errores['nombres']}
           required
         />
-        <Campo
+        <CampoTexto
+          id="apellidos"
           etiqueta="Apellidos"
           value={campos.apellidos}
           onChange={(e) => actualizar('apellidos', e.target.value)}
@@ -296,17 +314,30 @@ function FormularioNegocio(): ReactNode {
         />
       </div>
 
-      <Campo
-        etiqueta="Correo electrónico"
-        type="email"
-        autoComplete="email"
-        value={campos.email}
-        onChange={(e) => actualizar('email', e.target.value)}
-        error={errores['email']}
-        required
-      />
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="email"
+          etiqueta="Correo electrónico"
+          type="email"
+          autoComplete="email"
+          value={campos.email}
+          onChange={(e) => actualizar('email', e.target.value)}
+          error={errores['email']}
+          required
+        />
+        <CampoTexto
+          id="telefono"
+          etiqueta="Teléfono"
+          type="tel"
+          placeholder="9 dígitos"
+          value={campos.telefono}
+          onChange={(e) => actualizar('telefono', e.target.value)}
+          error={errores['telefono']}
+        />
+      </div>
 
-      <Campo
+      <CampoTexto
+        id="clave"
         etiqueta="Contraseña"
         type="password"
         autoComplete="new-password"
@@ -316,33 +347,30 @@ function FormularioNegocio(): ReactNode {
         required
       />
 
-      <Campo
-        etiqueta="Teléfono"
-        type="tel"
-        value={campos.telefono}
-        onChange={(e) => actualizar('telefono', e.target.value)}
-        error={errores['telefono']}
-        placeholder="9 dígitos"
-      />
+      <h2 className="mt-3 mb-3 border-b border-publico-linea pb-2 text-xs font-bold tracking-[0.08em] text-publico-tinta-suave uppercase">Tu negocio</h2>
 
-      <Campo
-        etiqueta="Razón social"
-        value={campos.razonSocial}
-        onChange={(e) => actualizar('razonSocial', e.target.value)}
-        error={errores['razonSocial']}
-        required
-      />
-
-      <Campo
-        etiqueta="RUC"
-        value={campos.ruc}
-        onChange={(e) => actualizar('ruc', e.target.value)}
-        error={errores['ruc']}
-        required
-        placeholder="11 dígitos"
-      />
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="razonSocial"
+          etiqueta="Razón social"
+          value={campos.razonSocial}
+          onChange={(e) => actualizar('razonSocial', e.target.value)}
+          error={errores['razonSocial']}
+          required
+        />
+        <CampoTexto
+          id="ruc"
+          etiqueta="RUC"
+          placeholder="11 dígitos"
+          value={campos.ruc}
+          onChange={(e) => actualizar('ruc', e.target.value)}
+          error={errores['ruc']}
+          required
+        />
+      </div>
 
       <AreaTexto
+        id="descripcion"
         etiqueta="Descripción del negocio"
         value={campos.descripcion}
         onChange={(e) => actualizar('descripcion', e.target.value)}
@@ -350,29 +378,33 @@ function FormularioNegocio(): ReactNode {
         rows={3}
       />
 
-      <Campo
-        etiqueta="Dirección del negocio"
-        value={campos.direccion}
-        onChange={(e) => actualizar('direccion', e.target.value)}
-        error={errores['direccion']}
-        required
-      />
-
-      <Campo
-        etiqueta="Distrito"
-        value={campos.distrito}
-        onChange={(e) => actualizar('distrito', e.target.value)}
-        error={errores['distrito']}
-        required
-      />
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <CampoTexto
+          id="direccion"
+          etiqueta="Dirección del negocio"
+          value={campos.direccion}
+          onChange={(e) => actualizar('direccion', e.target.value)}
+          error={errores['direccion']}
+          required
+        />
+        <CampoTexto
+          id="distrito"
+          etiqueta="Distrito"
+          value={campos.distrito}
+          onChange={(e) => actualizar('distrito', e.target.value)}
+          error={errores['distrito']}
+          required
+        />
+      </div>
 
       {/* Especialidades con tarifa */}
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-tinta">Especialidades y tarifas</legend>
+      <fieldset className="mt-3 space-y-3">
+        <legend className="text-sm font-bold text-publico-tinta">Especialidades y tarifas</legend>
 
         {especialidades.map((esp, i) => (
-          <div key={i} className="flex flex-col sm:flex-row sm:items-end gap-3 rounded-lg border border-linea bg-superficie-suave p-3">
+          <div key={i} className="flex flex-col gap-3 rounded-lg border border-publico-linea bg-publico-superficie-suave p-3 sm:flex-row sm:items-end">
             <Selector
+              id={`especialidad-${i}`}
               etiqueta="Especialidad"
               value={esp.especialidad}
               onChange={(e) => actualizarEspecialidad(i, 'especialidad', e.target.value)}
@@ -384,7 +416,8 @@ function FormularioNegocio(): ReactNode {
             </Selector>
 
             <div className="flex items-end gap-3">
-              <Campo
+              <CampoTexto
+                id={`tarifa-${i}`}
                 etiqueta="Tarifa base (S/)"
                 type="number"
                 min="1"
@@ -398,7 +431,7 @@ function FormularioNegocio(): ReactNode {
                 <button
                   type="button"
                   onClick={() => quitarEspecialidad(i)}
-                  className="mb-0.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-md px-3 py-2 text-xs font-medium text-peligro hover:bg-superficie focus:outline-none focus:ring-2 focus:ring-accion focus:ring-offset-2 focus:ring-offset-lienzo"
+                  className="mb-0.5 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-3 py-2 text-xs font-bold text-publico-peligro hover:bg-publico-superficie focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie"
                 >
                   Quitar
                 </button>
@@ -407,16 +440,16 @@ function FormularioNegocio(): ReactNode {
           </div>
         ))}
 
-        {errores['especialidades'] && (
-          <p role="alert" className="text-xs text-peligro">{errores['especialidades']}</p>
-        )}
+        <p role={errores['especialidades'] ? 'alert' : undefined} className="min-h-5 text-xs font-bold text-publico-peligro">
+          {errores['especialidades']}
+        </p>
 
-        <Boton type="button" variante="secundario" onClick={agregarEspecialidad} className="text-xs">
+        <Boton type="button" variante="secundario" onClick={agregarEspecialidad}>
           Agregar especialidad
         </Boton>
       </fieldset>
 
-      <Boton type="submit" cargando={enviando} className="w-full">
+      <Boton type="submit" cargando={enviando} className="mt-4 w-full">
         Crear cuenta de negocio
       </Boton>
     </form>
