@@ -121,6 +121,13 @@ public class ServicioPanel {
 
         // El correo lo escribe otra persona; aquí solo se dispara. Si falla el envío,
         // la asignación NO se deshace: la orden ya está asignada en la base.
+        //
+        // Este catch solo cumple esa promesa mientras `avisarAsignacion` NO sea
+        // @Transactional. Si alguien se la vuelve a poner, la excepción marca
+        // esta transacción como rollback-only antes de llegar aquí, y tragársela
+        // no sirve de nada: el commit revienta igual con un 500. Está medido
+        // (19 sep 2026) y hay una prueba que lo vigila:
+        // AsignacionTest.asignarSigueEnPieAunqueElCorreoFalle.
         avisos.ifPresent(a -> {
             try {
                 a.avisarAsignacion(orden);

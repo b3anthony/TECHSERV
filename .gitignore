@@ -25,3 +25,9 @@ disenio/maquetas-*/_logs/
 .idea/
 .vscode/
 *.swp
+
+# documentación en Markdown: no sube al repositorio
+*.md
+
+# laboratorio de diseño (maquetas, fotos, capturas de los brazos)
+disenio/

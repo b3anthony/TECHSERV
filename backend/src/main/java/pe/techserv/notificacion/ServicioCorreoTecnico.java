@@ -5,7 +5,6 @@ import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import pe.techserv.comun.PropiedadesTechServ;
@@ -42,8 +41,25 @@ public class ServicioCorreoTecnico implements AvisoTecnico {
         this.props = props;
     }
 
+    // SIN @Transactional, y no es un olvido: es el arreglo del 19 sep 2026.
+    //
+    // Cuando este metodo la llevaba, se unia a la transaccion de quien asigna
+    // (propagacion REQUIRED). Si el correo fallaba, el interceptor marcaba esa
+    // transaccion compartida como rollback-only. El catch de ServicioPanel se
+    // tragaba la excepcion, pero la bandera ya estaba puesta y NADIE puede
+    // quitarla: al hacer commit saltaba UnexpectedRollbackException y la
+    // asignacion entera se caia con un 500. Justo lo contrario de lo que
+    // promete el comentario de ServicioPanel.
+    //
+    // Sin la anotacion no hay interceptor, asi que no hay nada que marque la
+    // transaccion. Los `tokens.save` se unen a la del llamante, que ya la trae
+    // (ServicioPanel es @Transactional, y la prueba que llama aqui directo
+    // tambien). Si el correo revienta despues de guardar los tokens, esos
+    // tokens se quedan: caducan solos y no estorban.
+    //
+    // No le pongas REQUIRES_NEW para "aislarlo": eso suspende la transaccion
+    // del llamante, y `orden` es una entidad de ESE contexto de persistencia.
     @Override
-    @Transactional
     public void avisarAsignacion(OrdenServicio orden) {
         String enlaceConfirmar = generarEnlace(orden, AccionTecnico.CONFIRMAR);
         String enlaceEnCamino = generarEnlace(orden, AccionTecnico.EN_CAMINO);

@@ -1,6 +1,7 @@
 package pe.techserv.panel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -9,6 +10,10 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.techserv.BasePruebaIntegracion;
 import pe.techserv.comun.Especialidad;
@@ -25,6 +30,9 @@ import pe.techserv.orden.OrdenServicioRepository;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -40,12 +48,25 @@ class AsignacionTest extends BasePruebaIntegracion {
     private static final String ADMIN_TECNOHOGAR = "silvia@tecnohogar.pe";
     private static final String CLAVE            = "demo1234";
 
+    // El correo va mockeado a proposito. Sin esto la suite exige un SMTP vivo en
+    // localhost:1025 (Mailpit, via docker compose) y falla en cualquier maquina
+    // que no lo tenga levantado. Medido el 19 sep 2026: dos pruebas en rojo sobre
+    // master limpio por esta causa, no por la logica que decian probar.
+    // Por defecto NO falla: cada prueba que quiera un correo roto lo dice.
+    @MockitoBean JavaMailSender correo;
+
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
     @Autowired OrdenServicioRepository ordenes;
     @Autowired OrdenHistorialRepository historialRepo;
     @Autowired TecnicoRepository tecnicos;
     @Autowired MypeRepository mypes;
+
+    @BeforeEach
+    void correoQueNoRevienta() {
+        when(correo.createMimeMessage())
+                .thenAnswer(inv -> new JavaMailSenderImpl().createMimeMessage());
+    }
 
     private Long mypeDelgado() {
         return mypes.findAll().stream()
@@ -282,5 +303,53 @@ class AsignacionTest extends BasePruebaIntegracion {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.campos.tecnicoId").value("Elige un técnico"));
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("Asignar sigue en pie aunque el envío del correo falle")
+    void asignarSigueEnPieAunqueElCorreoFalle() throws Exception {
+        // Esta prueba existe por un fallo real, no por completitud.
+        //
+        // El 19 sep 2026 un correo caido tumbaba la asignacion entera con un 500.
+        // No porque la excepcion llegara al controlador —ServicioPanel la captura
+        // y la registra— sino porque `avisarAsignacion` era @Transactional: al
+        // reventar, el interceptor marcaba la transaccion del panel como
+        // rollback-only, y tragarse la excepcion despues ya no servia de nada.
+        // El commit saltaba con UnexpectedRollbackException.
+        //
+        // Si alguien vuelve a poner @Transactional en avisarAsignacion, esta
+        // prueba se pone roja. Es su unico trabajo.
+        doThrow(new MailSendException("SMTP caido a proposito"))
+                .when(correo).send(any(jakarta.mail.internet.MimeMessage.class));
+
+        // Se busca SIN filtrar por estado y se fuerza a PENDIENTE. Filtrar por
+        // PENDIENTE aqui haria la prueba dependiente de lo que dejaron las ocho
+        // anteriores: ya las habian asignado todas y esto reventaba con un
+        // NoSuchElement, que se parece a un fallo pero no es el que vigilamos.
+        OrdenServicio orden = ordenes.findAll().stream()
+                .filter(o -> o.getMype().getId().equals(mypeDelgado())
+                        && o.getEspecialidad() == Especialidad.SOPORTE_INFORMATICO)
+                .findFirst().orElseThrow();
+        orden.setEstado(EstadoOrden.PENDIENTE);
+        orden.setTecnico(null);
+        ordenes.save(orden);
+
+        Tecnico carlos = tecnico("carlos.nunez@serviciosdelgado.pe");
+
+        mvc.perform(post("/api/panel/ordenes/{id}/asignar", orden.getId())
+                        .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {"tecnicoId": %d}
+                                 """.formatted(carlos.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ASIGNADA"));
+
+        // Y que quede asignada de verdad en la base, no solo en la respuesta:
+        // si la transaccion se hubiera deshecho, esto seguiria en PENDIENTE.
+        OrdenServicio actualizada = ordenes.findById(orden.getId()).orElseThrow();
+        assertThat(actualizada.getEstado()).isEqualTo(EstadoOrden.ASIGNADA);
+        assertThat(actualizada.getTecnico().getId()).isEqualTo(carlos.getId());
     }
 }
