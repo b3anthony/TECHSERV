@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.techserv.BasePruebaIntegracion;
 import pe.techserv.mype.MypeRepository;
@@ -32,6 +33,7 @@ class ReservaTest extends BasePruebaIntegracion {
     @Autowired ObjectMapper json;
     @Autowired MypeRepository mypes;
     @Autowired TecnicoRepository tecnicos;
+    @Autowired JdbcTemplate jdbc;
 
     /** Servicios Delgado: 3 técnicos, pero solo 2 marcados como disponibles. */
     private Long tallerDelgado() {
@@ -142,12 +144,27 @@ class ReservaTest extends BasePruebaIntegracion {
     @Test
     @DisplayName("El catálogo público se ve sin iniciar sesión, con promedios calculados")
     void catalogoPublico() throws Exception {
+        // Lo esperado se calcula aqui y no se escribe a mano: otras clases
+        // califican ordenes de Delgado en la misma base, y el orden en que
+        // Maven las corre cambia de una maquina a otra (126 en una, 130 en
+        // otra). Lo que se prueba es que el catalogo cuenta las calificaciones
+        // reales, no un numero fijo.
+        var esperado = jdbc.queryForMap("""
+                SELECT ROUND(AVG(cal.puntaje)::numeric, 1)::float8 AS promedio,
+                       COUNT(cal.id)                               AS servicios
+                  FROM mype m
+                  JOIN orden_servicio os ON os.mype_id = m.id
+                  JOIN calificacion cal  ON cal.orden_id = os.id
+                 WHERE m.ruc = '20601234567'
+                """);
+        assertThat(((Number) esperado.get("servicios")).intValue()).isGreaterThanOrEqualTo(126);
+
         mvc.perform(get("/api/catalogo/mypes").param("especialidad", "REPARACION_ELECTRODOMESTICOS"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$[?(@.razonSocial=='Servicios Delgado E.I.R.L.')].promedio")
-                   .value(org.hamcrest.Matchers.contains(4.8)))
+                   .value(org.hamcrest.Matchers.contains(esperado.get("promedio"))))
            .andExpect(jsonPath("$[?(@.razonSocial=='Servicios Delgado E.I.R.L.')].servicios")
-                   .value(org.hamcrest.Matchers.contains(126)));
+                   .value(org.hamcrest.Matchers.contains(((Number) esperado.get("servicios")).intValue())));
     }
 
     // ── utilidades ──
