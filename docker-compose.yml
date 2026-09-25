@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-techserv}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techserv_local}
     ports:
-      - "55432:5432"   # el 5432 lo ocupa docentos_db, otro proyecto vivo
+      - "55432:5432"   # 55432 y no 5432, para no chocar con un PostgreSQL ya instalado en la máquina
     volumes:
       - techserv_db:/var/lib/postgresql/data
     healthcheck:

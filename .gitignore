@@ -27,8 +27,11 @@ disenio/maquetas-*/_logs/
 .vscode/
 *.swp
 
-# documentación en Markdown: no sube al repositorio
+# documentación en Markdown: no sube al repositorio, salvo el README y el
+# manual de instalación, que son para el equipo
 *.md
+!/README.md
+!/docs/MANUAL-WINDOWS.md
 
 # laboratorio de diseño (maquetas, fotos, capturas de los brazos)
 disenio/
