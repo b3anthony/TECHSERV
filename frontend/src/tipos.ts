@@ -1,3 +1,5 @@
+import type { MetodoPago } from './paginas/panel/tiposPanel.ts'
+
 export type Rol = 'CLIENTE' | 'ADMIN_MYPE' | 'TECNICO'
 
 export type EstadoOrden =
@@ -22,6 +24,15 @@ export interface RespuestaSesion {
   token: string
   expiraEn: string
   usuario: UsuarioActual
+  /** El cliente había desactivado su cuenta y al entrar la recuperó. */
+  cuentaReactivada?: boolean
+}
+
+/** Coincide con HorarioDia.java. `dia`: 1 = lunes … 7 = domingo. Horas "HH:mm". */
+export interface HorarioDia {
+  dia: number
+  abre: string
+  cierra: string
 }
 
 export interface ErrorApi {
@@ -48,6 +59,8 @@ export interface OrdenResumen {
   horaProgramada: string | null
   tecnicoNombre: string | null
   cantidadFotos: number
+  /** Solo en la bandeja del taller: la nota del técnico que dijo que no puede ir. */
+  rechazo?: string | null
 }
 
 /** Coincide con OrdenDetalle.java del backend */
@@ -72,6 +85,8 @@ export interface OrdenDetalle {
   diagnostico: string | null
   precioManoObra: number | null
   total: number | null
+  /** Cómo dijo el cliente que pagaría. Falta en las órdenes antiguas. */
+  metodoPago?: MetodoPago | null
   creadaEn: string
   fotos: string[]
   /** Las que subió el técnico durante el trabajo. */

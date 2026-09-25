@@ -4,6 +4,7 @@ import pe.techserv.comun.Especialidad;
 import pe.techserv.mype.Repuesto;
 import pe.techserv.orden.EstadoOrden;
 import pe.techserv.orden.dto.PasoHistorial;
+import pe.techserv.pago.MetodoPago;
 import pe.techserv.panel.dto.DetallePago;
 
 import java.math.BigDecimal;
@@ -44,6 +45,10 @@ public record VistaVisita(String codigo,
                           BigDecimal tarifaSugerida,
                           /** Solo mientras hay que cerrar: los repuestos que puede elegir. */
                           List<RepuestoDisponible> catalogo,
+                          /** Los métodos de pago que acepta el taller: los únicos que puede marcar al cobrar. */
+                          List<MetodoPago> metodosPago,
+                          /** Cómo dijo el cliente que pagaría. Si lo eligió, es el único que puede marcar. */
+                          MetodoPago metodoPagoCliente,
                           List<PasoHistorial> historial) {
 
     public record RepuestoCobrado(String nombre, int cantidad, BigDecimal precioUnitario, BigDecimal subtotal) {}

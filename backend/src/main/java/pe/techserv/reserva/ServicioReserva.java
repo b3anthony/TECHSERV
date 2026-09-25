@@ -70,8 +70,17 @@ public class ServicioReserva {
                 .orElseThrow(() -> new SolicitudInvalida(
                         "Ese taller no atiende " + datos.especialidad().getTitulo()));
 
+        if (!taller.getMetodosPago().contains(datos.metodoPago())) {
+            throw new SolicitudInvalida("Ese taller no acepta pagos con "
+                    + datos.metodoPago().getEtiqueta());
+        }
+
         if (!ServicioCatalogo.FRANJAS.contains(datos.hora())) {
             throw new SolicitudInvalida("Esa hora no es una franja de atención");
+        }
+
+        if (!taller.atiende(datos.fecha().getDayOfWeek(), datos.hora())) {
+            throw new SolicitudInvalida("El taller no atiende ese día a esa hora");
         }
 
         // El cupo se vuelve a comprobar AQUI, no solo al pintar la agenda: entre
@@ -97,13 +106,14 @@ public class ServicioReserva {
         orden.setLongitud(cliente.getLongitud());
         orden.setFechaProgramada(datos.fecha());
         orden.setHoraProgramada(datos.hora());
+        orden.setMetodoPago(datos.metodoPago());
         orden.setEstado(EstadoOrden.PENDIENTE);
         ordenes.save(orden);
 
         anotar(orden, null, EstadoOrden.PENDIENTE, ActorHistorial.CLIENTE,
                "El cliente registró la solicitud");
 
-        return OrdenDetalle.de(orden);
+        return OrdenDetalle.paraCliente(orden);
     }
 
     @Transactional
@@ -133,7 +143,7 @@ public class ServicioReserva {
             orden.getFotos().add(foto);
         }
 
-        return OrdenDetalle.de(orden);
+        return OrdenDetalle.paraCliente(orden);
     }
 
     @Transactional(readOnly = true)
@@ -146,7 +156,7 @@ public class ServicioReserva {
     @Transactional(readOnly = true)
     public OrdenDetalle miOrden(Long clienteId, Long ordenId) {
         return ordenes.findByIdAndClienteId(ordenId, clienteId)
-                .map(OrdenDetalle::de)
+                .map(OrdenDetalle::paraCliente)
                 .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
     }
 

@@ -17,6 +17,7 @@ import pe.techserv.orden.OrdenServicio;
 import pe.techserv.orden.OrdenServicioRepository;
 import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.pago.EstadoPago;
+import pe.techserv.pago.MetodoPago;
 import pe.techserv.pago.Pago;
 import pe.techserv.pago.PagoRepository;
 import pe.techserv.panel.dto.CierreOrden;
@@ -187,6 +188,24 @@ public class ServicioCierre {
 
         if (pagos.findByOrdenId(orden.getId()).isPresent()) {
             throw new ConflictoEstado("Esa orden ya tiene un pago registrado");
+        }
+
+        // Lo comprueba aquí, y no solo el formulario, porque por aquí pasan los dos
+        // cobros: el del panel y el del técnico desde su página.
+        MetodoPago elegido = orden.getMetodoPago();
+        if (cobradoPor != null && elegido != null) {
+            // El técnico cobra como dijo el cliente al reservar. Si el cliente
+            // paga de otra forma, lo registra el taller desde el panel.
+            if (peticion.metodo() != elegido) {
+                throw new SolicitudInvalida("El cliente eligió pagar con " + elegido.getEtiqueta()
+                        + ". Si te pagó de otra forma, avisa al taller para que lo registre");
+            }
+        } else if (peticion.metodo() != elegido
+                && !orden.getMype().getMetodosPago().contains(peticion.metodo())) {
+            // Lo que eligió el cliente vale aunque el taller haya dejado de
+            // aceptarlo después: la reserva se hizo con esas condiciones.
+            throw new SolicitudInvalida("El taller no acepta pagos con "
+                    + peticion.metodo().getEtiqueta());
         }
 
         Pago pago = new Pago();

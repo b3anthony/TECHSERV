@@ -117,6 +117,34 @@ public class ServicioVisita {
         return vista(orden, tecnico);
     }
 
+    /**
+     * El técnico no puede ir. La orden vuelve a PENDIENTE y sin técnico, y el
+     * taller la ve otra vez en su bandeja para asignarla a otro. El cliente no
+     * recibe nada: su reserva sigue en pie y el paso no aparece en su
+     * seguimiento (ver {@link OrdenHistorial#esRechazoDelTecnico()}).
+     *
+     * Solo antes de confirmar: una vez confirmada, el taller ya cuenta con él y
+     * el cambio se habla por teléfono.
+     */
+    @Transactional
+    public void rechazar(String token, String motivo) {
+        EnlaceTecnico enlace = enlaces.vigente(token);
+        Tecnico tecnico = enlace.getTecnico();
+        OrdenServicio orden = bloquear(enlace);
+
+        if (orden.getEstado() != EstadoOrden.ASIGNADA) {
+            throw new ConflictoEstado("La orden está " + orden.getEstado().getEtiqueta().toLowerCase()
+                    + ": ya no se puede rechazar desde aquí. Llama al taller");
+        }
+
+        String porque = (motivo == null || motivo.isBlank()) ? "" : ": " + motivo.trim();
+        orden.setTecnico(null);
+        orden.setEstado(EstadoOrden.PENDIENTE);
+        ordenes.save(orden);
+        anotar(orden, EstadoOrden.ASIGNADA, EstadoOrden.PENDIENTE,
+                nombre(tecnico) + " no puede ir" + porque);
+    }
+
     @Transactional
     public VistaVisita terminar(String token, CierreOrden peticion) {
         EnlaceTecnico enlace = enlaces.vigente(token);
@@ -217,6 +245,8 @@ public class ServicioVisita {
                         ? repuestos.findByMypeIdAndActivoTrueOrderByNombreAsc(mypeId).stream()
                                 .map(VistaVisita.RepuestoDisponible::de).toList()
                         : List.of(),
+                o.getMype().getMetodosPago().stream().sorted().toList(),
+                o.getMetodoPago(),
                 o.getHistorial().stream().map(PasoHistorial::de).toList());
     }
 

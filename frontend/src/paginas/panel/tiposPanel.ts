@@ -1,4 +1,4 @@
-import type { Especialidad, EstadoOrden } from '../../tipos.ts'
+import type { Especialidad, EstadoOrden, HorarioDia } from '../../tipos.ts'
 
 export interface IndicadoresPanel {
   pendientes: number
@@ -17,6 +17,9 @@ export interface TecnicoDisponible {
   disponible: boolean
   especialidades: Especialidad[]
   ordenesHoy: number
+  /** Promedio de sus calificaciones, con un decimal. No viene si aún no tiene. */
+  promedio?: number
+  calificaciones: number
 }
 
 export interface RepuestoCatalogo {
@@ -67,14 +70,26 @@ export interface TarifaResumen {
   tarifaBase: number
 }
 
-/** Cuerpo de POST /panel/tecnicos (sin `disponible`) y de PATCH /panel/tecnicos/{id}. */
+/**
+ * Cuerpo de POST /panel/tecnicos (sin `disponible`) y de PATCH /panel/tecnicos/{id}.
+ * Sin `especialidades`, el técnico atiende la especialidad del taller.
+ */
 export interface DatosTecnico {
   nombres: string
   apellidos: string
   email?: string
   telefono: string
   disponible?: boolean
-  especialidades: Especialidad[]
+  especialidades?: Especialidad[]
+}
+
+/** Coincide con AjustesTaller.java */
+export interface AjustesTaller {
+  cuenta: { nombres: string; apellidos: string; email: string; telefono?: string }
+  negocio: { razonSocial: string; ruc: string; descripcion?: string; telefono?: string; direccion: string; distrito: string }
+  especialidad?: TarifaResumen
+  horarios: HorarioDia[]
+  metodosPago: MetodoPago[]
 }
 
 /** Coincide con TecnicoRanking.java */

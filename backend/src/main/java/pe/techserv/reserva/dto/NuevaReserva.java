@@ -3,6 +3,7 @@ package pe.techserv.reserva.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import pe.techserv.comun.Especialidad;
+import pe.techserv.pago.MetodoPago;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -33,5 +34,9 @@ public record NuevaReserva(
 
         @JsonFormat(pattern = "HH:mm")
         @NotNull(message = "Elige la hora")
-        LocalTime hora) {
+        LocalTime hora,
+
+        /** Uno de los que acepta el taller: se comprueba al reservar. */
+        @NotNull(message = "Elige cómo vas a pagar")
+        MetodoPago metodoPago) {
 }

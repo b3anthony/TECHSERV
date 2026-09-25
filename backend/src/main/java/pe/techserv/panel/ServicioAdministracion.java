@@ -58,16 +58,27 @@ public class ServicioAdministracion {
 
     // ───────────────────────────── Técnicos ─────────────────────────────
 
+    /** Cuántos técnicos puede tener un taller a la vez. Los dados de baja no cuentan. */
+    public static final int MAXIMO_TECNICOS = 10;
+
     @Transactional
     public DetalleTecnico crearTecnico(Long mypeId, NuevoTecnico datos) {
         if (usuarios.existsByEmailIgnoreCase(datos.email().trim())) {
             throw new SolicitudInvalida("Ya hay una cuenta con ese correo");
         }
 
-        Mype taller = mypes.findById(mypeId)
+        // Bloquea la fila del taller antes de contar: dos altas a la vez se
+        // ponen en fila y la segunda ya ve a la primera. Sin esto, dos
+        // peticiones con 9 técnicos pasarían las dos y el taller quedaría con 11.
+        Mype taller = mypes.bloquear(mypeId)
                 .orElseThrow(() -> new RecursoNoEncontrado("No se encontró el taller"));
 
-        validarEspecialidadesPermitidas(mypeId, datos.especialidades());
+        if (tecnicos.countByMypeIdAndUsuarioActivoTrue(mypeId) >= MAXIMO_TECNICOS) {
+            throw new ConflictoEstado("Tu equipo ya tiene " + MAXIMO_TECNICOS
+                    + " técnicos, el máximo por taller. Quita a alguien para añadir a otro");
+        }
+
+        List<Especialidad> especialidadesTecnico = especialidadesDe(mypeId, datos.especialidades());
 
         Usuario usuario = new Usuario();
         usuario.setNombres(datos.nombres().trim());
@@ -83,7 +94,7 @@ public class ServicioAdministracion {
         tecnico.setUsuario(usuario);
         tecnico.setMype(taller);
         tecnico.setDisponible(true);
-        tecnico.getEspecialidades().addAll(datos.especialidades());
+        tecnico.getEspecialidades().addAll(especialidadesTecnico);
         tecnicos.save(tecnico);
 
         return DetalleTecnico.de(tecnico);
@@ -94,7 +105,7 @@ public class ServicioAdministracion {
         Tecnico tecnico = tecnicos.findByIdAndMypeId(id, mypeId)
                 .orElseThrow(() -> new RecursoNoEncontrado("No se encontró el técnico"));
 
-        validarEspecialidadesPermitidas(mypeId, datos.especialidades());
+        List<Especialidad> especialidadesTecnico = especialidadesDe(mypeId, datos.especialidades());
 
         Usuario usuario = tecnico.getUsuario();
         usuario.setNombres(datos.nombres().trim());
@@ -103,7 +114,7 @@ public class ServicioAdministracion {
 
         tecnico.setDisponible(datos.disponible());
         tecnico.getEspecialidades().clear();
-        tecnico.getEspecialidades().addAll(datos.especialidades());
+        tecnico.getEspecialidades().addAll(especialidadesTecnico);
 
         return DetalleTecnico.de(tecnico);
     }
@@ -138,6 +149,17 @@ public class ServicioAdministracion {
 
         Mype taller = mypes.findById(mypeId)
                 .orElseThrow(() -> new RecursoNoEncontrado("No se encontró el taller"));
+
+        // Un taller atiende una sola especialidad: aquí se cambia su tarifa, no
+        // se añade otra.
+        especialidades.findByMypeId(mypeId).stream()
+                .filter(otra -> otra.getEspecialidad() != especialidad)
+                .findFirst()
+                .ifPresent(otra -> {
+                    throw new ConflictoEstado("Tu taller atiende "
+                            + otra.getEspecialidad().getTitulo()
+                            + ". Cada taller atiende una sola especialidad");
+                });
 
         MypeEspecialidad me = especialidades.findByMypeIdAndEspecialidad(mypeId, especialidad)
                 .orElseGet(() -> {
@@ -220,16 +242,25 @@ public class ServicioAdministracion {
 
     // ───────────────────────────── Auxiliares ─────────────────────────────
 
-    private void validarEspecialidadesPermitidas(Long mypeId, List<Especialidad> solicitadas) {
+    /**
+     * Lo que atiende el técnico. Si no se dice, lo que atiende el taller: con una
+     * sola especialidad por taller, elegirla en cada alta sobra. Si se dice, tiene
+     * que ser algo que el taller atiende.
+     */
+    private List<Especialidad> especialidadesDe(Long mypeId, List<Especialidad> solicitadas) {
         Set<Especialidad> atendidas = especialidades.findByMypeId(mypeId).stream()
                 .map(MypeEspecialidad::getEspecialidad)
                 .collect(Collectors.toSet());
 
+        if (solicitadas == null || solicitadas.isEmpty()) {
+            return List.copyOf(atendidas);
+        }
         for (Especialidad esp : solicitadas) {
             if (!atendidas.contains(esp)) {
                 throw new SolicitudInvalida("Tu taller no atiende " + esp.getTitulo());
             }
         }
+        return solicitadas;
     }
 
     private void validarRangoTarifa(BigDecimal tarifaBase) {

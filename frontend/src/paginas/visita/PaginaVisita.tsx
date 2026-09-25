@@ -7,6 +7,7 @@ import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Icono, SpriteIconos } from '../../componentes/Icono.tsx'
 import type { IconoNombre } from '../../componentes/Icono.tsx'
 import { focoClaro, focoOscuro } from '../../componentes/marco/foco.ts'
+import { AreaTexto } from '../../componentes/publico/AreaTexto.tsx'
 import { Aviso } from '../../componentes/publico/Aviso.tsx'
 import { Boton } from '../../componentes/publico/Boton.tsx'
 import { fechaAmigable, formatearFecha, formatearMomento, horaCorta } from '../portal/fechas.ts'
@@ -63,10 +64,13 @@ export function PaginaVisita(): ReactNode {
   const [logro, setLogro] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [avanzando, setAvanzando] = useState<string | null>(null)
+  // Dijo que no puede ir: el enlace ya no vale y la página no vuelve a pedirlo.
+  const [rechazada, setRechazada] = useState(false)
 
   const consulta = useQuery<VistaVisita>({
     queryKey: clave,
     queryFn: async () => (await api.get<VistaVisita>(`/visita/${token}`)).data,
+    enabled: !rechazada,
     // El taller puede cancelar o cerrar desde el panel: la página se entera sola.
     refetchInterval: 30_000,
     retry: (intentos, err) => !(axios.isAxiosError(err) && err.response?.status === 404) && intentos < 2,
@@ -96,6 +100,18 @@ export function PaginaVisita(): ReactNode {
     } finally {
       setAvanzando(null)
     }
+  }
+
+  if (rechazada) {
+    return (
+      <Marco>
+        <main id="contenido" className="mx-auto grid min-h-dvh max-w-md content-center justify-items-center px-6 py-16 text-center">
+          <span className="grid size-16 place-items-center rounded-2xl bg-publico-panel text-publico-acento motion-safe:animate-[visita-sello_450ms_ease-out]"><Icono nombre="visto" className="size-8" /></span>
+          <h1 className="mt-5 text-2xl font-bold" tabIndex={-1} ref={(h) => h?.focus()}>Listo, avisamos al taller</h1>
+          <p className="mt-2 text-publico-tinta-media">Ya no tienes que ir. El taller le dará la visita a otro técnico; el cliente no recibe ningún aviso.</p>
+        </main>
+      </Marco>
+    )
   }
 
   if (consulta.isPending) {
@@ -216,12 +232,13 @@ export function PaginaVisita(): ReactNode {
         {/* ─── Lo que toca ahora ─── */}
         <section aria-label="Lo que toca ahora" key={`${v.estado}-${v.total ?? ''}-${v.pago ? 1 : 0}`} className="rounded-2xl border border-publico-linea bg-publico-superficie p-5 shadow-lg shadow-publico-tinta/10 motion-safe:animate-[visita-entra_350ms_ease-out]">
           {cancelada ? (
-            <p className="text-publico-tinta-media">El taller canceló esta visita. No tienes que ir. Si tienes dudas, llama al taller.</p>
+            <p className="text-publico-tinta-media">Esta visita se canceló. No tienes que ir. Si tienes dudas, llama al taller.</p>
           ) : v.estado === 'ASIGNADA' ? (
             <>
               <h2 className="text-xl font-bold">¿Puedes ir?</h2>
               <p className="mt-1 mb-4 text-sm text-publico-tinta-media">Revisa abajo la dirección y lo que contó el cliente, y confirma la visita.</p>
               {botonPaso('Confirmar visita', 'check', 'confirmar')}
+              <CancelarVisita token={token} deshabilitado={avanzando !== null} alCancelar={() => setRechazada(true)} />
             </>
           ) : v.estado === 'CONFIRMADA' ? (
             <>
@@ -243,7 +260,7 @@ export function PaginaVisita(): ReactNode {
           ) : hito === 3 ? (
             <FormularioCierre token={token} visita={v} alTerminar={(n) => actualizar(n, 'terminar')} />
           ) : hito === 4 && v.total != null ? (
-            <Cobro token={token} total={v.total} alCobrar={(n) => actualizar(n, 'cobro')} />
+            <Cobro token={token} total={v.total} aceptados={v.metodosPago} elegidoPorCliente={v.metodoPagoCliente} alCobrar={(n) => actualizar(n, 'cobro')} />
           ) : (
             <div className="grid justify-items-center py-2 text-center">
               <span className="grid size-16 place-items-center rounded-2xl bg-publico-completada text-publico-superficie motion-safe:animate-[visita-sello_500ms_ease-out]"><Icono nombre="visto" className="size-8" /></span>
@@ -270,6 +287,9 @@ export function PaginaVisita(): ReactNode {
           </Tarjeta>
         )}
 
+        {/* Dónde, quién y qué pasa: hacen falta para ir y para empezar. Una vez
+            dentro del domicilio (Terminado, Cobrado) ya no, y solo alargan la página. */}
+        {hito < 3 && <>
         {/* ─── Dónde ─── */}
         <Tarjeta titulo="Dónde es" icono="pin">
           <p className="text-lg font-bold">{v.direccion}</p>
@@ -315,6 +335,7 @@ export function PaginaVisita(): ReactNode {
             </ul>
           )}
         </Tarjeta>
+        </>}
 
         <p className="flex items-start gap-2 px-1 text-xs text-publico-tinta-suave">
           <Icono nombre="correo" className="mt-px size-4 shrink-0" />
@@ -323,6 +344,49 @@ export function PaginaVisita(): ReactNode {
       </div>
       </main>
     </Marco>
+  )
+}
+
+/**
+ * «No puedo ir». La visita no se cancela para el cliente: vuelve al taller,
+ * que se la da a otro técnico. Pide confirmación y, si quiere, el motivo.
+ */
+function CancelarVisita({ token, deshabilitado, alCancelar }: { token: string; deshabilitado: boolean; alCancelar: () => void }): ReactNode {
+  const [abierto, setAbierto] = useState(false)
+  const [motivo, setMotivo] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function cancelar(): Promise<void> {
+    setEnviando(true)
+    setError(null)
+    try {
+      await api.post(`/visita/${token}/rechazar`, { motivo: motivo.trim() })
+      alCancelar()
+    } catch (err) {
+      setError(mensajeDeError(err))
+      setEnviando(false)
+    }
+  }
+
+  if (!abierto) {
+    return (
+      <Boton type="button" variante="secundario" onClick={() => setAbierto(true)} disabled={deshabilitado} className="mt-2 min-h-12 w-full">
+        <Icono nombre="cerrar" className="size-4" /> Cancelar visita
+      </Boton>
+    )
+  }
+
+  return (
+    <div className="mt-4 grid gap-3 rounded-xl border border-publico-linea-fuerte bg-publico-lienzo p-4">
+      <p className="text-sm"><b>¿Seguro que no puedes ir?</b> Le avisamos al taller para que se la dé a otro técnico. El cliente mantiene su reserva.</p>
+      <AreaTexto id="motivo-rechazo" etiqueta="¿Por qué? (opcional)" ayuda="Solo lo lee el taller." max={200} rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} autoFocus />
+      <div aria-live="polite" className="empty:hidden">{error && <Aviso tipo="error">{error}</Aviso>}</div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Boton type="button" variante="secundario" onClick={() => { setAbierto(false); setMotivo(''); setError(null) }} disabled={enviando}>Sí puedo ir</Boton>
+        <Boton type="button" variante="peligro" onClick={() => void cancelar()} cargando={enviando}>No puedo ir, avisar al taller</Boton>
+      </div>
+    </div>
   )
 }
 

@@ -12,4 +12,7 @@ public record TecnicoDisponible(Long id,
                                 String telefono,
                                 boolean disponible,
                                 Set<Especialidad> especialidades,
-                                long ordenesHoy) {}
+                                long ordenesHoy,
+                                /** Promedio de sus calificaciones con un decimal; null si aún no tiene. */
+                                Double promedio,
+                                long calificaciones) {}

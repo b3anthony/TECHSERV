@@ -5,8 +5,12 @@ import { api, borrarSesion, guardarSesion, leerToken } from '../api/cliente.ts'
 
 interface ContextoSesion {
   usuario: UsuarioActual | null
-  entrar: (email: string, clave: string) => Promise<UsuarioActual>
+  entrar: (email: string, clave: string) => Promise<RespuestaSesion>
   salir: () => void
+  /** Borra la sesión sin salir de la página: para cuando el servidor ya la cerró y quien llama decide adónde ir. */
+  olvidarSesion: () => void
+  /** Vuelve a pedir el usuario al servidor, p. ej. tras cambiar el nombre en Ajustes. */
+  refrescar: () => Promise<void>
   cargando: boolean
 }
 
@@ -48,12 +52,32 @@ export function SesionProvider(props: { children: ReactNode }): ReactNode {
       .finally(() => setCargando(false))
   }, [])
 
-  const entrar = useCallback(async (email: string, clave: string): Promise<UsuarioActual> => {
+  const entrar = useCallback(async (email: string, clave: string): Promise<RespuestaSesion> => {
     const r = await api.post('/auth/login', { email, clave })
     const sesion = r.data as RespuestaSesion
     guardarSesion(sesion)
     setUsuario(sesion.usuario)
-    return sesion.usuario
+    return sesion
+  }, [])
+
+  const refrescar = useCallback(async (): Promise<void> => {
+    const r = await api.get('/auth/yo')
+    const u = r.data as UsuarioActual
+    setUsuario(u)
+    const raw = localStorage.getItem('techserv.sesion')
+    if (raw) {
+      try {
+        const sesion: RespuestaSesion = JSON.parse(raw)
+        guardarSesion({ ...sesion, usuario: u })
+      } catch {
+        // Sesión guardada ilegible: se queda como está y la próxima carga la resuelve.
+      }
+    }
+  }, [])
+
+  const olvidarSesion = useCallback(() => {
+    borrarSesion()
+    setUsuario(null)
   }, [])
 
   const salir = useCallback(() => {
@@ -63,7 +87,7 @@ export function SesionProvider(props: { children: ReactNode }): ReactNode {
   }, [])
 
   return (
-    <Ctx value={{ usuario, entrar, salir, cargando }}>
+    <Ctx value={{ usuario, entrar, salir, olvidarSesion, refrescar, cargando }}>
       {props.children}
     </Ctx>
   )

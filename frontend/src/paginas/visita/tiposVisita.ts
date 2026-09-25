@@ -1,5 +1,5 @@
 import type { Especialidad, EstadoOrden, PasoHistorial } from '../../tipos.ts'
-import type { DetallePagoRespuesta } from '../panel/tiposPanel.ts'
+import type { DetallePagoRespuesta, MetodoPago } from '../panel/tiposPanel.ts'
 
 /** Lo que devuelve /api/visita/{token}: la orden vista por el técnico. */
 export interface VistaVisita {
@@ -30,6 +30,10 @@ export interface VistaVisita {
   pago: DetallePagoRespuesta | null
   tarifaSugerida: number | null
   catalogo: RepuestoDisponible[]
+  /** Los métodos de pago que acepta el taller. */
+  metodosPago: MetodoPago[]
+  /** Cómo dijo el cliente que pagaría: si lo eligió, es el único que se puede marcar. */
+  metodoPagoCliente?: MetodoPago | null
   historial: PasoHistorial[]
 }
 

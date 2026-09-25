@@ -2,7 +2,6 @@ package pe.techserv.panel.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import pe.techserv.comun.Especialidad;
 
@@ -25,6 +24,6 @@ public record NuevoTecnico(
         @Size(max = 20, message = "El teléfono no puede tener más de 20 caracteres")
         String telefono,
 
-        @NotEmpty(message = "Elige al menos una especialidad")
+        /** Opcional: si no llega, el técnico atiende la especialidad del taller. */
         List<Especialidad> especialidades
 ) {}

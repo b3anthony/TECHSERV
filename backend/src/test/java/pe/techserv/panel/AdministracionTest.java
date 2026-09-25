@@ -15,6 +15,7 @@ import pe.techserv.usuario.Rol;
 import pe.techserv.usuario.Usuario;
 import pe.techserv.usuario.UsuarioRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,7 +60,7 @@ class AdministracionTest extends BasePruebaIntegracion {
                     "apellidos": "Bustamante",
                     "email": "%s",
                     "telefono": "988776655",
-                    "especialidades": ["SERVICIOS_HOGAR"]
+                    "especialidades": ["REPARACION_ELECTRODOMESTICOS"]
                 }
                 """.formatted(correo);
 
@@ -111,8 +112,7 @@ class AdministracionTest extends BasePruebaIntegracion {
     @Test
     @DisplayName("Alta de técnico con una especialidad que el taller no atiende: responde 400")
     void altaTecnicoConEspecialidadNoAtendidaDa400() throws Exception {
-        // En la semilla, Reparaciones La Libertad (Raúl) solo atiende
-        // REPARACION_ELECTRODOMESTICOS y SERVICIOS_HOGAR; no atiende SOPORTE_INFORMATICO.
+        // Reparaciones La Libertad (Raúl) solo atiende SERVICIOS_HOGAR.
         Long raulMypeId = mypes.findAll().stream()
                 .filter(m -> m.getRuc().equals("20605554443"))
                 .findFirst().orElseThrow().getId();
@@ -180,7 +180,7 @@ class AdministracionTest extends BasePruebaIntegracion {
                     "apellidos": "Sin Órdenes",
                     "email": "%s",
                     "telefono": "911223344",
-                    "especialidades": ["SERVICIOS_HOGAR"]
+                    "especialidades": ["REPARACION_ELECTRODOMESTICOS"]
                 }
                 """.formatted(correo);
 
@@ -230,55 +230,56 @@ class AdministracionTest extends BasePruebaIntegracion {
     }
 
     @Test
-    @DisplayName("PUT de una tarifa nueva pasa a atenderla; segundo PUT con otro importe la actualiza sin duplicar fila")
-    void fijarTarifaCreaYActualizaSinDuplicar() throws Exception {
+    @DisplayName("PUT de la tarifa de su especialidad la actualiza sin duplicar fila")
+    void fijarTarifaActualizaSinDuplicar() throws Exception {
         Long raulMypeId = mypes.findAll().stream()
                 .filter(m -> m.getRuc().equals("20605554443"))
                 .findFirst().orElseThrow().getId();
-
-        // Aseguramos que inicialmente no atienda SOPORTE_INFORMATICO
-        especialidades.findByMypeIdAndEspecialidad(raulMypeId, Especialidad.SOPORTE_INFORMATICO)
-                .ifPresent(especialidades::delete);
+        BigDecimal original = especialidades.findByMypeIdAndEspecialidad(raulMypeId, Especialidad.SERVICIOS_HOGAR)
+                .orElseThrow().getTarifaBase();
 
         try {
-            // Primer PUT: alta de tarifa
-            mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.SOPORTE_INFORMATICO)
-                            .header("Authorization", "Bearer " + tokenDe(ADMIN_LIBERTAD))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"tarifaBase": 75.00}
-                                    """))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.especialidad").value("SOPORTE_INFORMATICO"))
-                    .andExpect(jsonPath("$.tarifaBase").value(75.00));
-
-            List<MypeEspecialidad> lista1 = especialidades.findByMypeId(raulMypeId).stream()
-                    .filter(me -> me.getEspecialidad() == Especialidad.SOPORTE_INFORMATICO)
-                    .toList();
-            assertThat(lista1).hasSize(1);
-            assertThat(lista1.get(0).getTarifaBase()).isEqualByComparingTo("75.00");
-
-            // Segundo PUT: actualización de tarifa
-            mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.SOPORTE_INFORMATICO)
+            mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.SERVICIOS_HOGAR)
                             .header("Authorization", "Bearer " + tokenDe(ADMIN_LIBERTAD))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"tarifaBase": 89.90}
                                     """))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.especialidad").value("SOPORTE_INFORMATICO"))
+                    .andExpect(jsonPath("$.especialidad").value("SERVICIOS_HOGAR"))
                     .andExpect(jsonPath("$.tarifaBase").value(89.90));
 
-            List<MypeEspecialidad> lista2 = especialidades.findByMypeId(raulMypeId).stream()
-                    .filter(me -> me.getEspecialidad() == Especialidad.SOPORTE_INFORMATICO)
-                    .toList();
-            assertThat(lista2).hasSize(1);
-            assertThat(lista2.get(0).getTarifaBase()).isEqualByComparingTo("89.90");
+            List<MypeEspecialidad> lista = especialidades.findByMypeId(raulMypeId);
+            assertThat(lista).hasSize(1);
+            assertThat(lista.get(0).getTarifaBase()).isEqualByComparingTo("89.90");
         } finally {
-            // Restaurar estado de la semilla
-            especialidades.findByMypeIdAndEspecialidad(raulMypeId, Especialidad.SOPORTE_INFORMATICO)
-                    .ifPresent(especialidades::delete);
+            MypeEspecialidad me = especialidades.findByMypeIdAndEspecialidad(raulMypeId, Especialidad.SERVICIOS_HOGAR)
+                    .orElseThrow();
+            me.setTarifaBase(original);
+            especialidades.save(me);
         }
+    }
+
+    @Test
+    @DisplayName("PUT de la tarifa de otra especialidad responde 409: un taller atiende una sola")
+    void fijarTarifaDeOtraEspecialidadDa409() throws Exception {
+        Long raulMypeId = mypes.findAll().stream()
+                .filter(m -> m.getRuc().equals("20605554443"))
+                .findFirst().orElseThrow().getId();
+
+        mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.SOPORTE_INFORMATICO)
+                        .header("Authorization", "Bearer " + tokenDe(ADMIN_LIBERTAD))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tarifaBase": 75.00}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.mensaje").value(
+                        "Tu taller atiende Servicios del Hogar. Cada taller atiende una sola especialidad"));
+
+        assertThat(especialidades.findByMypeId(raulMypeId))
+                .extracting(MypeEspecialidad::getEspecialidad)
+                .containsExactly(Especialidad.SERVICIOS_HOGAR);
     }
 
     @Test
@@ -352,19 +353,18 @@ class AdministracionTest extends BasePruebaIntegracion {
     }
 
     @Test
-    @DisplayName("DELETE de tarifa con órdenes abiertas: responde 409")
-    void deleteTarifaConOrdenesAbiertasDa409() throws Exception {
-        // En Servicios Delgado (Jorge), SERVICIOS_HOGAR tiene órdenes abiertas (ORD-0139, ORD-0138)
-        mvc.perform(delete("/api/panel/tarifas/{especialidad}", Especialidad.SERVICIOS_HOGAR)
+    @DisplayName("DELETE de la única especialidad del taller: responde 409")
+    void deleteUnicaEspecialidadDa409() throws Exception {
+        mvc.perform(delete("/api/panel/tarifas/{especialidad}", Especialidad.REPARACION_ELECTRODOMESTICOS)
                         .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.mensaje").value("Hay órdenes en curso de esa especialidad"));
+                .andExpect(jsonPath("$.mensaje").value("Tu taller tiene que atender al menos una especialidad"));
     }
 
     @Test
     @DisplayName("PUT de tarifa con importe fuera de rango responde 400")
     void putTarifaFueraDeRangoDa400() throws Exception {
-        mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.SERVICIOS_HOGAR)
+        mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.REPARACION_ELECTRODOMESTICOS)
                         .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -372,7 +372,7 @@ class AdministracionTest extends BasePruebaIntegracion {
                                 """))
                 .andExpect(status().isBadRequest());
 
-        mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.SERVICIOS_HOGAR)
+        mvc.perform(put("/api/panel/tarifas/{especialidad}", Especialidad.REPARACION_ELECTRODOMESTICOS)
                         .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

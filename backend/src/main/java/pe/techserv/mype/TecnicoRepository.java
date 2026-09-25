@@ -24,6 +24,32 @@ public interface TecnicoRepository extends JpaRepository<Tecnico, Long> {
 
     long countByMypeIdAndDisponibleTrue(Long mypeId);
 
+    /** Los que siguen en el equipo, disponibles o no. Los dados de baja no cuentan. */
+    long countByMypeIdAndUsuarioActivoTrue(Long mypeId);
+
+    /**
+     * La calificacion de cada tecnico del taller: el promedio y el numero de
+     * servicios calificados que hizo el. Se calcula sobre las calificaciones
+     * reales, igual que el promedio del taller en el catalogo.
+     */
+    @Query("""
+           SELECT os.tecnico.id AS tecnicoId,
+                  AVG(cal.puntaje) AS promedio,
+                  COUNT(cal.id) AS calificaciones
+           FROM Calificacion cal
+                JOIN cal.orden os
+           WHERE os.mype.id = :mypeId
+             AND os.tecnico IS NOT NULL
+           GROUP BY os.tecnico.id
+           """)
+    List<CalificacionTecnico> calificaciones(@Param("mypeId") Long mypeId);
+
+    interface CalificacionTecnico {
+        Long getTecnicoId();
+        Double getPromedio();
+        Long getCalificaciones();
+    }
+
     /** Cuantas ordenes sin cerrar lleva hoy cada tecnico del taller. */
     @Query("""
            SELECT t.id AS tecnicoId, COUNT(os.id) AS abiertas

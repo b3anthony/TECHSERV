@@ -63,7 +63,8 @@ class SeguimientoTest extends BasePruebaIntegracion {
                                    "referencia": "Frente al parque",
                                    "distrito": "Trujillo",
                                    "fecha": "%s",
-                                   "hora": "10:00"
+                                   "hora": "10:00",
+                                   "metodoPago": "YAPE"
                                  }
                                  """.formatted(tallerDelgado(), fecha)))
                 .andExpect(status().isCreated())

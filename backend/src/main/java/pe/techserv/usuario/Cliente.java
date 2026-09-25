@@ -2,6 +2,7 @@ package pe.techserv.usuario;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 /** Los datos de contacto y direccion por defecto de quien pide el servicio. */
 @Entity
@@ -31,6 +32,14 @@ public class Cliente {
     @Column(precision = 10, scale = 7)
     private BigDecimal longitud;
 
+    /** Cuándo desactivó su cuenta. NULL si está activa, o si ya se eliminó. */
+    @Column(name = "desactivada_en")
+    private OffsetDateTime desactivadaEn;
+
+    /** Cuándo se borraron sus datos personales, pasado el plazo sin reactivarla. */
+    @Column(name = "eliminada_en")
+    private OffsetDateTime eliminadaEn;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Usuario getUsuario() { return usuario; }
@@ -45,4 +54,8 @@ public class Cliente {
     public void setLatitud(BigDecimal latitud) { this.latitud = latitud; }
     public BigDecimal getLongitud() { return longitud; }
     public void setLongitud(BigDecimal longitud) { this.longitud = longitud; }
+    public OffsetDateTime getDesactivadaEn() { return desactivadaEn; }
+    public void setDesactivadaEn(OffsetDateTime desactivadaEn) { this.desactivadaEn = desactivadaEn; }
+    public OffsetDateTime getEliminadaEn() { return eliminadaEn; }
+    public void setEliminadaEn(OffsetDateTime eliminadaEn) { this.eliminadaEn = eliminadaEn; }
 }

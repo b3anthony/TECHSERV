@@ -3,13 +3,17 @@ package pe.techserv.seguridad;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.techserv.cliente.ServicioCuentaCliente;
 import pe.techserv.comun.PropiedadesTechServ;
 import pe.techserv.comun.SolicitudInvalida;
 import pe.techserv.mype.*;
+import pe.techserv.pago.MetodoPago;
 import pe.techserv.seguridad.dto.*;
 import pe.techserv.usuario.*;
 
 import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.List;
 
 /** Entrar y registrarse. Los dos caminos de registro acaban en un usuario y un rol. */
 @Service
@@ -24,12 +28,14 @@ public class ServicioAutenticacion {
     private final ServicioJwt jwt;
     private final ServicioPrincipal principales;
     private final PropiedadesTechServ props;
+    private final ServicioCuentaCliente cuentasCliente;
 
     public ServicioAutenticacion(UsuarioRepository usuarios, ClienteRepository clientes,
                                  MypeRepository mypes, AdministradorRepository administradores,
                                  MypeEspecialidadRepository especialidades,
                                  PasswordEncoder claves, ServicioJwt jwt,
-                                 ServicioPrincipal principales, PropiedadesTechServ props) {
+                                 ServicioPrincipal principales, PropiedadesTechServ props,
+                                 ServicioCuentaCliente cuentasCliente) {
         this.usuarios = usuarios;
         this.clientes = clientes;
         this.mypes = mypes;
@@ -39,6 +45,7 @@ public class ServicioAutenticacion {
         this.jwt = jwt;
         this.principales = principales;
         this.props = props;
+        this.cuentasCliente = cuentasCliente;
     }
 
     /**
@@ -46,14 +53,28 @@ public class ServicioAutenticacion {
      * esta mal. Distinguirlos convierte el formulario en una lista de quien
      * tiene cuenta aqui.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public RespuestaSesion entrar(PeticionLogin peticion) {
         Usuario usuario = usuarios.findByEmailIgnoreCase(peticion.email())
                 .filter(u -> claves.matches(peticion.clave(), u.getClaveHash()))
-                .filter(Usuario::isActivo)
-                .orElseThrow(() -> new SolicitudInvalida("Correo o contraseña incorrectos"));
+                .orElseThrow(ServicioAutenticacion::credencialesIncorrectas);
 
-        return sesionDe(usuario);
+        // Un cliente que desactivó su cuenta la recupera entrando antes de que
+        // venza el plazo. Cualquier otra cuenta inactiva responde lo mismo que
+        // una clave mal escrita.
+        boolean reactivada = false;
+        if (!usuario.isActivo()) {
+            reactivada = usuario.getRol() == Rol.CLIENTE && cuentasCliente.reactivarSiPuede(usuario);
+            if (!reactivada) {
+                throw credencialesIncorrectas();
+            }
+        }
+
+        return sesionDe(usuario, reactivada);
+    }
+
+    private static SolicitudInvalida credencialesIncorrectas() {
+        return new SolicitudInvalida("Correo o contraseña incorrectos");
     }
 
     @Transactional
@@ -81,6 +102,9 @@ public class ServicioAutenticacion {
             throw new SolicitudInvalida("Ya hay un negocio registrado con ese RUC");
         }
 
+        // Antes de crear nada: si el horario no vale, que no quede un usuario a medias.
+        List<HorarioAtencion> horario = HorarioDia.validar(datos.horarios());
+
         Usuario usuario = nuevoUsuario(datos.nombres(), datos.apellidos(), datos.email(),
                                        datos.clave(), datos.telefono(), Rol.ADMIN_MYPE);
         usuarios.save(usuario);
@@ -92,15 +116,16 @@ public class ServicioAutenticacion {
         mype.setTelefono(vacioANulo(datos.telefono()));
         mype.setDireccion(datos.direccion());
         mype.setDistrito(datos.distrito());
+        mype.getHorarios().addAll(horario);
+        // Acepta los cuatro métodos de entrada; los ajusta en el panel.
+        mype.getMetodosPago().addAll(EnumSet.allOf(MetodoPago.class));
         mypes.save(mype);
 
-        datos.especialidades().forEach(tarifa -> {
-            MypeEspecialidad me = new MypeEspecialidad();
-            me.setMype(mype);
-            me.setEspecialidad(tarifa.especialidad());
-            me.setTarifaBase(tarifa.tarifaBase());
-            especialidades.save(me);
-        });
+        MypeEspecialidad me = new MypeEspecialidad();
+        me.setMype(mype);
+        me.setEspecialidad(datos.especialidad());
+        me.setTarifaBase(datos.tarifaBase());
+        especialidades.save(me);
 
         Administrador admin = new Administrador();
         admin.setUsuario(usuario);
@@ -111,6 +136,10 @@ public class ServicioAutenticacion {
     }
 
     private RespuestaSesion sesionDe(Usuario usuario) {
+        return sesionDe(usuario, false);
+    }
+
+    private RespuestaSesion sesionDe(Usuario usuario, boolean reactivada) {
         String token = jwt.paraSesion(usuario);
         UsuarioActual actual = principales.porId(usuario.getId())
                 .map(this::aUsuarioActual)
@@ -119,7 +148,7 @@ public class ServicioAutenticacion {
 
         return new RespuestaSesion(token,
                 OffsetDateTime.now().plusHours(props.jwt().horas()),
-                actual);
+                actual, reactivada);
     }
 
     public UsuarioActual aUsuarioActual(UsuarioAutenticado autenticado) {

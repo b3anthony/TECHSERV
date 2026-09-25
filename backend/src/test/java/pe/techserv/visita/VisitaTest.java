@@ -23,6 +23,7 @@ import pe.techserv.orden.OrdenHistorial;
 import pe.techserv.orden.OrdenHistorialRepository;
 import pe.techserv.orden.OrdenServicio;
 import pe.techserv.orden.OrdenServicioRepository;
+import pe.techserv.pago.MetodoPago;
 import pe.techserv.pago.PagoRepository;
 import pe.techserv.usuario.ClienteRepository;
 import pe.techserv.usuario.Usuario;
@@ -37,7 +38,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -229,6 +232,125 @@ class VisitaTest extends BasePruebaIntegracion {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"metodo\": \"PLIN\"}"))
                 .andExpect(status().isConflict());
         assertThat(pagos.findByOrdenId(cerrada.getId()).orElseThrow().getMetodo().name()).isEqualTo("EFECTIVO");
+    }
+
+    // ── no puedo ir ──
+
+    @Test
+    @DisplayName("Si el técnico no puede ir, la orden vuelve al taller para asignarla a otro, y el cliente no ve el rechazo")
+    void tecnicoRechazaLaVisita() throws Exception {
+        OrdenServicio orden = ordenDelgado(EstadoOrden.ASIGNADA);
+        // Lejos en el futuro: así sale la primera en la bandeja, que ordena por fecha.
+        orden.setFechaProgramada(LocalDate.now().plusYears(3));
+        ordenes.save(orden);
+        String token = tokenPara(orden);
+        String tecnico = usuarioDelTecnico(orden).getNombreCompleto();
+        String admin = sesion("jorge@serviciosdelgado.pe");
+
+        mvc.perform(post("/api/visita/{t}/rechazar", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\": \"Tengo fiebre\"}"))
+                .andExpect(status().isNoContent());
+
+        tx.executeWithoutResult(estado -> {
+            OrdenServicio despues = ordenes.findById(orden.getId()).orElseThrow();
+            assertThat(despues.getEstado()).isEqualTo(EstadoOrden.PENDIENTE);
+            assertThat(despues.getTecnico()).isNull();
+        });
+        List<OrdenHistorial> pasos = historial.findByOrdenIdOrderByOcurridoEnAsc(orden.getId());
+        OrdenHistorial ultimo = pasos.get(pasos.size() - 1);
+        assertThat(ultimo.getActor()).isEqualTo(ActorHistorial.TECNICO);
+        assertThat(ultimo.getEstadoAnterior()).isEqualTo(EstadoOrden.ASIGNADA);
+        assertThat(ultimo.getNota()).isEqualTo(tecnico + " no puede ir: Tengo fiebre");
+
+        // Su enlace ya no abre nada.
+        mvc.perform(get("/api/visita/{t}", token)).andExpect(status().isNotFound());
+
+        // El taller lo ve en su bandeja, con la nota del técnico.
+        mvc.perform(get("/api/panel/ordenes").param("estado", "PENDIENTE").param("tamano", "5")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == %d)].rechazo".formatted(orden.getId()))
+                        .value(hasItem(tecnico + " no puede ir: Tengo fiebre")));
+
+        // El cliente no: ni en el seguimiento ni en el detalle de su orden.
+        String cliente = sesion(tx.execute(estado ->
+                ordenes.findById(orden.getId()).orElseThrow().getCliente().getUsuario().getEmail()));
+        mvc.perform(get("/api/mis-ordenes/{id}/seguimiento", orden.getId())
+                        .header("Authorization", "Bearer " + cliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"))
+                .andExpect(jsonPath("$.pasos[*].nota", not(hasItem(containsString("no puede ir")))));
+        mvc.perform(get("/api/mis-ordenes/{id}", orden.getId())
+                        .header("Authorization", "Bearer " + cliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.historial[*].nota", not(hasItem(containsString("no puede ir")))));
+
+        // Y el taller la asigna a otro.
+        Tecnico otro = activos(mype(RUC_DELGADO)).stream()
+                .filter(t -> t.isDisponible() && !t.getUsuario().getNombreCompleto().equals(tecnico))
+                .findFirst().orElseThrow();
+        mvc.perform(post("/api/panel/ordenes/{id}/asignar", orden.getId())
+                        .header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tecnicoId\": %d}".formatted(otro.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ASIGNADA"))
+                .andExpect(jsonPath("$.tecnicoId").value(otro.getId()));
+    }
+
+    @Test
+    @DisplayName("Una vez confirmada, el técnico ya no puede rechazar la visita desde su página")
+    void rechazarDespuesDeConfirmarDa409() throws Exception {
+        OrdenServicio orden = ordenDelgado(EstadoOrden.CONFIRMADA);
+        String token = tokenPara(orden);
+
+        mvc.perform(post("/api/visita/{t}/rechazar", token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.mensaje").value(containsString("Llama al taller")));
+
+        assertThat(estadoDe(orden)).isEqualTo(EstadoOrden.CONFIRMADA);
+        assertThat(historial.findByOrdenIdOrderByOcurridoEnAsc(orden.getId())).isEmpty();
+        mvc.perform(get("/api/visita/{t}", token)).andExpect(status().isOk());
+    }
+
+    // ── cobrar como dijo el cliente ──
+
+    @Test
+    @DisplayName("El técnico solo puede cobrar con el método que eligió el cliente; el taller puede registrar otro")
+    void elTecnicoCobraConElMetodoDelCliente() throws Exception {
+        OrdenServicio orden = ordenDelgado(EstadoOrden.COMPLETADA);
+        orden.setTotal(new BigDecimal("80.00"));
+        orden.setPrecioManoObra(new BigDecimal("80.00"));
+        orden.setMetodoPago(MetodoPago.YAPE);
+        ordenes.save(orden);
+        String token = tokenPara(orden);
+
+        mvc.perform(get("/api/visita/{t}", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metodoPagoCliente").value("YAPE"));
+
+        mvc.perform(post("/api/visita/{t}/cobro", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"metodo\": \"EFECTIVO\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value(containsString("El cliente eligió pagar con Yape")));
+        assertThat(pagos.findByOrdenId(orden.getId())).isEmpty();
+
+        mvc.perform(post("/api/visita/{t}/cobro", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"metodo\": \"YAPE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pago.metodo").value("YAPE"));
+
+        // Desde el panel, el taller registra lo que de verdad pasó.
+        OrdenServicio otra = ordenDelgado(EstadoOrden.COMPLETADA);
+        otra.setTotal(new BigDecimal("80.00"));
+        otra.setPrecioManoObra(new BigDecimal("80.00"));
+        otra.setMetodoPago(MetodoPago.YAPE);
+        ordenes.save(otra);
+        mvc.perform(post("/api/panel/ordenes/{id}/pago", otra.getId())
+                        .header("Authorization", "Bearer " + sesion("jorge@serviciosdelgado.pe"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"metodo\": \"EFECTIVO\"}"))
+                .andExpect(status().isOk());
     }
 
     // ── los enlaces que no valen ──

@@ -92,6 +92,21 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
     @Query(value = "SELECT nextval('orden_codigo_seq')", nativeQuery = true)
     long siguienteCorrelativo();
 
+    /**
+     * Solo los ids. Quien los pide los recorre con {@link #bloquear}: asi cada
+     * orden se lee fresca y bloqueada, no la copia que ya estuviera en memoria.
+     */
+    @Query("SELECT os.id FROM OrdenServicio os WHERE os.mype.id = :mypeId AND os.estado IN :estados ORDER BY os.id")
+    List<Long> idsPorEstado(@Param("mypeId") Long mypeId, @Param("estados") Collection<EstadoOrden> estados);
+
+    /** Como {@link #idsPorEstado}, pero las de un cliente: las recorre {@link #bloquearDelCliente}. */
+    @Query("SELECT os.id FROM OrdenServicio os WHERE os.cliente.id = :clienteId AND os.estado IN :estados ORDER BY os.id")
+    List<Long> idsDelCliente(@Param("clienteId") Long clienteId, @Param("estados") Collection<EstadoOrden> estados);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT os FROM OrdenServicio os WHERE os.id = :id AND os.cliente.id = :clienteId")
+    Optional<OrdenServicio> bloquearDelCliente(@Param("id") Long id, @Param("clienteId") Long clienteId);
+
     boolean existsByMypeIdAndTecnicoIdAndEstadoIn(Long mypeId, Long tecnicoId, Collection<EstadoOrden> estados);
 
     boolean existsByMypeIdAndEspecialidadAndEstadoIn(Long mypeId, Especialidad especialidad, Collection<EstadoOrden> estados);

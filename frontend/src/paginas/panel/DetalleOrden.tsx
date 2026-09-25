@@ -11,7 +11,7 @@ import type { ActorHistorial, EstadoOrden, OrdenDetalle } from '../../tipos.ts'
 import type { DetallePagoRespuesta, MetodoPago } from './tiposPanel.ts'
 import { fechaAmigable, formatearFecha, formatearMomento, horaCorta } from '../portal/fechas.ts'
 import { EsqueletoLista, TarjetaPanel } from './comun.tsx'
-import { ETIQUETA_ADMIN, EXPLICACION_ADMIN, ICONO_ESPECIALIDAD, contenedorPanel, coordenadas, mapaEmbebido, soles } from './formato.ts'
+import { ETIQUETA_ADMIN, EXPLICACION_ADMIN, ICONO_ESPECIALIDAD, METODOS_PAGO, contenedorPanel, coordenadas, mapaEmbebido, soles } from './formato.ts'
 import { iso } from './datos.ts'
 import { DialogoAsignacion } from './DialogoAsignacion.tsx'
 import { DialogoCierre } from './DialogoCierre.tsx'
@@ -183,6 +183,9 @@ export function DetalleOrden(): JSX.Element {
   )
 
   const puedeAsignar = orden.estado === 'PENDIENTE'
+  // El técnico la devolvió («no puedo ir») y es lo último que pasó.
+  const ultimoPaso = historialOrdenado[historialOrdenado.length - 1]
+  const rechazo = puedeAsignar && ultimoPaso?.estado === 'PENDIENTE' && ultimoPaso.actor === 'TECNICO' ? ultimoPaso : null
   const puedePasarAEnProceso = orden.estado === 'EN_CAMINO'
   const puedeCerrar =
     orden.estado === 'EN_PROCESO' ||
@@ -207,6 +210,7 @@ export function DetalleOrden(): JSX.Element {
         {texto}
       </button>
     )
+    if (puedeAsignar && rechazo) return { texto: <><b>{rechazo.nota ?? 'El técnico no puede ir'}.</b> Elige a otro técnico; el cliente no se enteró.</>, accion: boton('Asignar a otro técnico', () => setDialogoAsignarAbierto(true)) }
     if (puedeAsignar) return { texto: <>Elige qué técnico irá. Le enviaremos un correo con el enlace a su página de la visita.</>, accion: boton('Asignar técnico', () => setDialogoAsignarAbierto(true)) }
     if (orden.estado === 'ASIGNADA') return { texto: <>Esperando que <b>{tecnico}</b> confirme desde su página. No tienes que hacer nada.</> }
     if (orden.estado === 'CONFIRMADA') return { texto: <><b>{tecnico}</b> irá {cuando}. Marcará en su página cuando salga.</> }
@@ -406,7 +410,7 @@ export function DetalleOrden(): JSX.Element {
                       </span>
                       <div className="min-w-0">
                         <p className="flex flex-wrap items-baseline justify-between gap-x-3">
-                          <span className="font-bold">{PASO[paso.estado]}</span>
+                          <span className="font-bold">{paso.estado === 'PENDIENTE' && paso.actor === 'TECNICO' ? 'El técnico no puede ir' : PASO[paso.estado]}</span>
                           <time dateTime={paso.ocurridoEn} className="text-xs text-publico-tinta-suave tabular-nums">{formatearMomento(paso.ocurridoEn)}</time>
                         </p>
                         <p className="mt-0.5 text-sm text-publico-tinta-media">
@@ -441,6 +445,7 @@ export function DetalleOrden(): JSX.Element {
                 {orden.tecnicoNombre ?? <span className="font-normal text-publico-tinta-suave">Sin asignar</span>}
               </Fila>
               <Fila titulo="Etapa">{ETIQUETA_ADMIN[orden.estado]}</Fila>
+              {orden.metodoPago && <Fila titulo="Pagará con">{METODOS_PAGO.find((m) => m.valor === orden.metodoPago)?.texto}</Fila>}
             </dl>
             {orden.tecnicoNombre && orden.estado !== 'CANCELADA' && (
               <div className="mt-4 border-t border-publico-linea pt-4">
@@ -509,6 +514,7 @@ export function DetalleOrden(): JSX.Element {
       {orden.total != null && (
         <DialogoPago
           ordenId={orden.id}
+          elegidoPorCliente={orden.metodoPago}
           codigoOrden={orden.codigo}
           total={orden.total}
           abierto={dialogoPagoAbierto}

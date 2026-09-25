@@ -67,7 +67,7 @@ public class ServicioPanel {
                 ? ordenes.findByMypeIdOrderByFechaProgramadaDescHoraProgramadaDesc(mypeId, peticion)
                 : ordenes.findByMypeIdAndEstadoOrderByFechaProgramadaDescHoraProgramadaDesc(
                         mypeId, estado, peticion);
-        return resultado.map(OrdenResumen::de);
+        return resultado.map(OrdenResumen::paraTaller);
     }
 
     /**
@@ -100,7 +100,12 @@ public class ServicioPanel {
         Tecnico tecnico = tecnicos.findByIdAndMypeId(tecnicoId, mypeId)
                 .orElseThrow(() -> new RecursoNoEncontrado("No se encontró el técnico " + tecnicoId));
 
-        if (!tecnico.atiende(orden.getEspecialidad())) {
+        // Las órdenes de una especialidad que el taller ya no ofrece (anteriores a
+        // "un taller, una especialidad") no tienen técnico que la atienda: esas
+        // se pueden dar a cualquiera del equipo, para que no se queden huérfanas.
+        boolean especialidadVigente = tecnico.getMype().getEspecialidades().stream()
+                .anyMatch(me -> me.getEspecialidad() == orden.getEspecialidad());
+        if (especialidadVigente && !tecnico.atiende(orden.getEspecialidad())) {
             throw new SolicitudInvalida(tecnico.getUsuario().getNombreCompleto()
                     + " no atiende " + orden.getEspecialidad().getTitulo());
         }
@@ -169,6 +174,9 @@ public class ServicioPanel {
                         c -> c.getAbiertas() == null ? 0L : c.getAbiertas(),
                         (existente, reemplazo) -> existente));
 
+        Map<Long, TecnicoRepository.CalificacionTecnico> notas = tecnicos.calificaciones(mypeId).stream()
+                .collect(Collectors.toMap(TecnicoRepository.CalificacionTecnico::getTecnicoId, c -> c));
+
         // Los dados de baja no vuelven a aparecer: ni en el equipo ni para asignar.
         return tecnicos.findByMypeIdOrderByIdAsc(mypeId).stream()
                 .filter(t -> t.getUsuario().isActivo())
@@ -181,8 +189,17 @@ public class ServicioPanel {
                         t.getUsuario().getTelefono(),
                         t.isDisponible(),
                         Set.copyOf(t.getEspecialidades()),
-                        carga.getOrDefault(t.getId(), 0L)))
+                        carga.getOrDefault(t.getId(), 0L),
+                        Optional.ofNullable(notas.get(t.getId()))
+                                .map(n -> unDecimal(n.getPromedio())).orElse(null),
+                        Optional.ofNullable(notas.get(t.getId()))
+                                .map(TecnicoRepository.CalificacionTecnico::getCalificaciones).orElse(0L)))
                 .toList();
+    }
+
+    private static Double unDecimal(Double valor) {
+        return valor == null ? null
+                : java.math.BigDecimal.valueOf(valor).setScale(1, java.math.RoundingMode.HALF_UP).doubleValue();
     }
 
     private void anotar(OrdenServicio orden, EstadoOrden desde, EstadoOrden hasta,

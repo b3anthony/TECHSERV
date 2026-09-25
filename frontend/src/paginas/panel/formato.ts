@@ -1,6 +1,7 @@
 import type { IconoNombre } from '../../componentes/Icono.tsx'
 import { focoClaro } from '../../componentes/marco/foco.ts'
 import type { Especialidad, EstadoOrden } from '../../tipos.ts'
+import type { MetodoPago } from './tiposPanel.ts'
 import { MESES_ESPANOL, fechaAmigable } from '../portal/fechas.ts'
 
 /* ─── Dinero ─── */
@@ -56,6 +57,16 @@ export const ICONO_ESPECIALIDAD: Record<Especialidad, IconoNombre> = {
   SOPORTE_INFORMATICO: 'laptop',
   REPARACION_ELECTRODOMESTICOS: 'lavadora',
 }
+
+/* ─── Cobro ─── */
+
+/** En el orden en que se muestran. */
+export const METODOS_PAGO: { valor: MetodoPago; texto: string }[] = [
+  { valor: 'EFECTIVO', texto: 'Efectivo' },
+  { valor: 'YAPE', texto: 'Yape' },
+  { valor: 'PLIN', texto: 'Plin' },
+  { valor: 'TRANSFERENCIA', texto: 'Transferencia' },
+]
 
 /* ─── Personas ─── */
 

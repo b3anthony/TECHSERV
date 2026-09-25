@@ -28,6 +28,7 @@ public record Seguimiento(String codigo,
         boolean puedeCancelar = orden.getEstado().permite(EstadoOrden.CANCELADA);
         boolean puedeCalificar = orden.getEstado() == EstadoOrden.COMPLETADA && !tieneCalificacion;
         List<PasoHistorial> pasos = orden.getHistorial().stream()
+                .filter(paso -> !paso.esRechazoDelTecnico())
                 .sorted(Comparator.comparing(
                         OrdenHistorial::getOcurridoEn,
                         Comparator.nullsLast(Comparator.naturalOrder())))

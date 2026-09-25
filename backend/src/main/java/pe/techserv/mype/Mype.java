@@ -1,10 +1,17 @@
 package pe.techserv.mype;
 
 import jakarta.persistence.*;
+import pe.techserv.pago.MetodoPago;
+
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * El taller. Es la unidad de aislamiento del multi-inquilino: toda tabla de
@@ -51,6 +58,27 @@ public class Mype {
     @OneToMany(mappedBy = "mype", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MypeEspecialidad> especialidades = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "mype_horario", joinColumns = @JoinColumn(name = "mype_id"))
+    @OrderBy("diaSemana ASC")
+    private List<HorarioAtencion> horarios = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "mype_metodo_pago", joinColumns = @JoinColumn(name = "mype_id"))
+    @Column(name = "metodo", length = 20)
+    @Enumerated(EnumType.STRING)
+    private Set<MetodoPago> metodosPago = new LinkedHashSet<>();
+
+    /** El tramo de ese dia, o vacio si ese dia el taller no atiende. */
+    public Optional<HorarioAtencion> horarioDe(DayOfWeek dia) {
+        return horarios.stream().filter(h -> h.getDiaSemana() == dia.getValue()).findFirst();
+    }
+
+    /** Si una visita puede empezar a esa hora ese dia. */
+    public boolean atiende(DayOfWeek dia, LocalTime hora) {
+        return horarioDe(dia).map(h -> h.admite(hora)).orElse(false);
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getRazonSocial() { return razonSocial; }
@@ -74,4 +102,6 @@ public class Mype {
     public OffsetDateTime getCreadoEn() { return creadoEn; }
     public void setCreadoEn(OffsetDateTime creadoEn) { this.creadoEn = creadoEn; }
     public List<MypeEspecialidad> getEspecialidades() { return especialidades; }
+    public List<HorarioAtencion> getHorarios() { return horarios; }
+    public Set<MetodoPago> getMetodosPago() { return metodosPago; }
 }

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.techserv.comun.Especialidad;
 import pe.techserv.comun.RecursoNoEncontrado;
+import pe.techserv.mype.Mype;
 import pe.techserv.mype.MypeRepository;
 import pe.techserv.mype.TecnicoRepository;
 import pe.techserv.orden.OrdenServicioRepository;
@@ -50,11 +51,15 @@ public class ServicioCatalogo {
         return mypes.buscarPorEspecialidad(especialidad,
                         (distrito == null || distrito.isBlank()) ? null : distrito)
                 .stream()
-                .map(r -> new MypeCatalogo(
-                        r.getId(), r.getRazonSocial(), r.getDescripcion(),
-                        r.getDireccion(), r.getDistrito(), r.getTarifaBase(),
-                        redondear(r.getPromedio()), r.getServicios(),
-                        !franjasLibres(r.getId(), hoy).isEmpty()))
+                .map(r -> {
+                    Mype taller = mypes.findById(r.getId()).orElseThrow();
+                    return new MypeCatalogo(
+                            r.getId(), r.getRazonSocial(), r.getDescripcion(),
+                            r.getDireccion(), r.getDistrito(), r.getTarifaBase(),
+                            redondear(r.getPromedio()), r.getServicios(),
+                            !franjasLibres(taller, hoy).isEmpty(),
+                            taller.getMetodosPago().stream().sorted().toList());
+                })
                 .toList();
     }
 
@@ -67,13 +72,15 @@ public class ServicioCatalogo {
      */
     @Transactional(readOnly = true)
     public AgendaDia agenda(Long mypeId, LocalDate fecha) {
-        if (mypes.findById(mypeId).filter(m -> m.isActivo()).isEmpty()) {
-            throw new RecursoNoEncontrado("No se encontró el taller " + mypeId);
-        }
+        Mype taller = mypes.findById(mypeId).filter(Mype::isActivo)
+                .orElseThrow(() -> new RecursoNoEncontrado("No se encontró el taller " + mypeId));
         long aforo = aforoDe(mypeId);
         Map<LocalTime, Long> ocupacion = ocupacionDe(mypeId, fecha);
 
+        // Las franjas fuera del horario del taller no se ofrecen: ni libres ni
+        // "sin cupo". Un día cerrado devuelve la lista vacía.
         List<Franja> franjas = FRANJAS.stream()
+                .filter(hora -> taller.atiende(fecha.getDayOfWeek(), hora))
                 .map(hora -> {
                     long ocupadas = ocupacion.getOrDefault(hora, 0L);
                     boolean pasada = fecha.isEqual(LocalDate.now())
@@ -89,6 +96,12 @@ public class ServicioCatalogo {
     /** Si una franja concreta admite una reserva más. Lo usa la Fase 4 al crear. */
     @Transactional(readOnly = true)
     public boolean hayCupo(Long mypeId, LocalDate fecha, LocalTime hora) {
+        boolean abierto = mypes.findById(mypeId)
+                .map(m -> m.atiende(fecha.getDayOfWeek(), hora))
+                .orElse(false);
+        if (!abierto) {
+            return false;
+        }
         return ordenes.ocupacionEnFranja(mypeId, fecha, hora) < aforoDe(mypeId);
     }
 
@@ -97,13 +110,14 @@ public class ServicioCatalogo {
         return tecnicos.countByMypeIdAndDisponibleTrue(mypeId);
     }
 
-    private List<LocalTime> franjasLibres(Long mypeId, LocalDate fecha) {
-        long aforo = aforoDe(mypeId);
+    private List<LocalTime> franjasLibres(Mype taller, LocalDate fecha) {
+        long aforo = aforoDe(taller.getId());
         if (aforo == 0) {
             return List.of();
         }
-        Map<LocalTime, Long> ocupacion = ocupacionDe(mypeId, fecha);
+        Map<LocalTime, Long> ocupacion = ocupacionDe(taller.getId(), fecha);
         return FRANJAS.stream()
+                .filter(h -> taller.atiende(fecha.getDayOfWeek(), h))
                 .filter(h -> ocupacion.getOrDefault(h, 0L) < aforo)
                 .filter(h -> !(fecha.isEqual(LocalDate.now()) && h.isBefore(LocalTime.now())))
                 .toList();

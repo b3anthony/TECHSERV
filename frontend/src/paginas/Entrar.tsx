@@ -30,9 +30,12 @@ export function Entrar(): ReactNode {
     setEnviando(true)
 
     try {
-      const usuario = await entrar(email, clave)
-      const destino = desde ?? (usuario.rol === 'ADMIN_MYPE' ? '/panel' : '/mis-ordenes')
-      navigate(destino, { replace: true })
+      const sesion = await entrar(email, clave)
+      const destino = desde ?? (sesion.usuario.rol === 'ADMIN_MYPE' ? '/panel' : '/mis-ordenes')
+      navigate(destino, {
+        replace: true,
+        state: sesion.cuentaReactivada ? { aviso: 'Qué bueno verte otra vez. Tu cuenta volvió a estar activa.' } : undefined,
+      })
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as ErrorApi | undefined

@@ -43,7 +43,9 @@ public enum EstadoOrden {
     public Set<EstadoOrden> siguientes() {
         return switch (this) {
             case PENDIENTE  -> Set.of(ASIGNADA, CANCELADA);
-            case ASIGNADA   -> Set.of(CONFIRMADA, CANCELADA);
+            // Vuelve a PENDIENTE si el técnico dice que no puede ir: la orden
+            // regresa al taller para que la asigne a otro.
+            case ASIGNADA   -> Set.of(PENDIENTE, CONFIRMADA, CANCELADA);
             case CONFIRMADA -> Set.of(EN_CAMINO, CANCELADA);
             case EN_CAMINO  -> Set.of(EN_PROCESO, CANCELADA);
             case EN_PROCESO -> Set.of(COMPLETADA, CANCELADA);

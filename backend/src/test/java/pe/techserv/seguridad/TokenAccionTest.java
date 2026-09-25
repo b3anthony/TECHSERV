@@ -14,6 +14,8 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.techserv.BasePruebaIntegracion;
+import pe.techserv.mype.Tecnico;
+import pe.techserv.mype.TecnicoRepository;
 import pe.techserv.notificacion.ServicioCorreoTecnico;
 import pe.techserv.orden.ActorHistorial;
 import pe.techserv.orden.EstadoOrden;
@@ -54,6 +56,7 @@ class TokenAccionTest extends BasePruebaIntegracion {
     @Autowired OrdenServicioRepository ordenes;
     @Autowired OrdenHistorialRepository historial;
     @Autowired EnlaceTecnicoRepository enlaces;
+    @Autowired TecnicoRepository tecnicos;
 
     @BeforeEach
     void preparar() {
@@ -243,6 +246,32 @@ class TokenAccionTest extends BasePruebaIntegracion {
         mvc.perform(get("/t/accion").param("token", tokenDiscrepante))
                 .andExpect(status().isBadRequest())
                 .andExpect(view().name("tecnico/accion-invalida"));
+    }
+
+    @Test
+    @DisplayName("El botón viejo de un técnico que ya no tiene la orden no la mueve")
+    void tokenDeOtroTecnicoDelTallerDa400() throws Exception {
+        OrdenServicio orden = ordenes.findByCodigo("ORD-0139").orElseThrow();
+        // Otro del mismo taller: el que la tenía antes de que la devolviera y
+        // el taller se la diera a su compañero.
+        Tecnico anterior = tecnicos.findByMypeIdOrderByIdAsc(orden.getMype().getId()).stream()
+                .filter(t -> !t.getId().equals(orden.getTecnico().getId()))
+                .findFirst().orElseThrow();
+        UUID jti = UUID.randomUUID();
+        String token = servicioJwt.paraAccion(jti, orden.getId(), anterior.getId(), AccionTecnico.CONFIRMAR);
+
+        AccionToken fila = new AccionToken();
+        fila.setJti(jti);
+        fila.setOrden(orden);
+        fila.setTecnico(anterior);
+        fila.setAccion(AccionTecnico.CONFIRMAR);
+        fila.setExpiraEn(servicioJwt.expiracionDeAccion().atOffset(ZoneOffset.UTC));
+        tokens.save(fila);
+
+        mvc.perform(get("/t/accion").param("token", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(view().name("tecnico/accion-invalida"));
+        assertThat(ordenes.findById(orden.getId()).orElseThrow().getEstado()).isEqualTo(EstadoOrden.ASIGNADA);
     }
 
     @Test

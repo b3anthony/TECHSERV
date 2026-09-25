@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { Route, Routes } from 'react-router-dom'
+import { Ajustes } from './Ajustes.tsx'
 import { Bandeja } from './Bandeja.tsx'
 import { DetalleOrden } from './DetalleOrden.tsx'
 import { Equipo } from './Equipo.tsx'
@@ -18,6 +19,7 @@ export function PanelRutas(): JSX.Element {
         <Route path="equipo" element={<Equipo />} />
         <Route path="precios" element={<Precios />} />
         <Route path="reportes" element={<Reportes />} />
+        <Route path="ajustes" element={<Ajustes />} />
       </Route>
     </Routes>
   )

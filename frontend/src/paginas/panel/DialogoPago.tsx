@@ -4,13 +4,16 @@ import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Aviso } from '../../componentes/publico/Aviso.tsx'
 import { Boton } from '../../componentes/publico/Boton.tsx'
 import { DialogoPanel } from './comun.tsx'
-import { soles } from './formato.ts'
+import { METODOS_PAGO, soles } from './formato.ts'
+import { useAjustes } from './datos.ts'
 import type { MetodoPago } from './tiposPanel.ts'
 
 interface DialogoPagoProps {
   ordenId: number
   codigoOrden: string
   total: number
+  /** El que eligió el cliente al reservar: sale marcado, y vale aunque el taller haya dejado de aceptarlo. */
+  elegidoPorCliente?: MetodoPago | null
   abierto: boolean
   alCerrar: () => void
   alPagoExitoso: () => void
@@ -20,22 +23,29 @@ export function DialogoPago({
   ordenId,
   codigoOrden,
   total,
+  elegidoPorCliente,
   abierto,
   alCerrar,
   alPagoExitoso,
 }: DialogoPagoProps): JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const [metodo, setMetodo] = useState<MetodoPago>('EFECTIVO')
+  const ajustes = useAjustes()
+  // Solo los métodos que el taller acepta (Ajustes); mientras cargan, ninguno.
+  const aceptados = ajustes.data?.metodosPago ?? []
+  const metodos = METODOS_PAGO.filter((m) => aceptados.includes(m.valor) || m.valor === elegidoPorCliente)
+  const [elegido, setElegido] = useState<MetodoPago | null>(null)
+  const metodo = elegido ?? elegidoPorCliente ?? metodos[0]?.valor ?? null
   const [registrando, setRegistrando] = useState(false)
   const [errorPago, setErrorPago] = useState<string | null>(null)
 
   function manejarCerrar(): void {
     setErrorPago(null)
-    setMetodo('EFECTIVO')
+    setElegido(null)
     alCerrar()
   }
 
   async function manejarRegistrarPago(): Promise<void> {
+    if (!metodo) return
     setErrorPago(null)
     setRegistrando(true)
 
@@ -50,13 +60,6 @@ export function DialogoPago({
     }
   }
 
-  const metodos: { valor: MetodoPago; texto: string }[] = [
-    { valor: 'EFECTIVO', texto: 'Efectivo' },
-    { valor: 'YAPE', texto: 'Yape' },
-    { valor: 'PLIN', texto: 'Plin' },
-    { valor: 'TRANSFERENCIA', texto: 'Transferencia' },
-  ]
-
   return (
     <DialogoPanel
       ref={dialogRef}
@@ -69,11 +72,12 @@ export function DialogoPago({
       pie={
         <>
           <Boton type="button" variante="secundario" disabled={registrando} onClick={() => dialogRef.current?.close()}>Cancelar</Boton>
-          <Boton type="button" cargando={registrando} disabled={registrando} onClick={manejarRegistrarPago}>Registrar {soles(total)}</Boton>
+          <Boton type="button" cargando={registrando} disabled={registrando || !metodo} onClick={manejarRegistrarPago}>Registrar {soles(total)}</Boton>
         </>
       }
     >
       {errorPago && <Aviso tipo="error" className="mb-4">{errorPago}</Aviso>}
+      {ajustes.error && <Aviso tipo="error" className="mb-4">No pudimos cargar los métodos de pago que aceptas. Cierra y vuelve a intentarlo.</Aviso>}
 
       <div className="rounded-xl bg-publico-panel px-4 py-5 text-center text-publico-superficie">
         <p className="text-sm text-publico-superficie/70">Monto a cobrar</p>
@@ -82,10 +86,13 @@ export function DialogoPago({
 
       <fieldset className="mt-5">
         <legend className="mb-2 text-sm font-bold">Método de pago</legend>
+        {elegidoPorCliente && (
+          <p className="-mt-1 mb-2 text-xs text-publico-tinta-media">Al reservar, el cliente eligió {METODOS_PAGO.find((m) => m.valor === elegidoPorCliente)?.texto.toLowerCase()}. Si te pagó de otra forma, márcala.</p>
+        )}
         <div className="grid grid-cols-2 gap-2">
           {metodos.map((m) => (
             <label key={m.valor} className={`flex min-h-13 cursor-pointer items-center justify-center rounded-xl border-2 px-3 text-sm font-bold has-[:focus]:ring-2 has-[:focus]:ring-publico-acento has-[:focus]:ring-offset-2 has-[:focus]:ring-offset-publico-superficie ${metodo === m.valor ? 'border-publico-tinta bg-publico-panel text-publico-superficie' : 'border-publico-linea hover:border-publico-linea-fuerte'}`}>
-              <input type="radio" name={`metodo-pago-${ordenId}`} value={m.valor} checked={metodo === m.valor} onChange={() => setMetodo(m.valor)} className="sr-only" />
+              <input type="radio" name={`metodo-pago-${ordenId}`} value={m.valor} checked={metodo === m.valor} onChange={() => setElegido(m.valor)} className="sr-only" />
               {m.texto}
             </label>
           ))}

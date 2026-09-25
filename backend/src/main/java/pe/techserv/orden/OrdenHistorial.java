@@ -42,6 +42,14 @@ public class OrdenHistorial {
     @Column(name = "ocurrido_en", nullable = false)
     private OffsetDateTime ocurridoEn = OffsetDateTime.now();
 
+    /**
+     * El técnico dijo que no puede ir y la orden volvió al taller. Es un asunto
+     * entre el técnico y el taller: el cliente no lo ve en su seguimiento.
+     */
+    public boolean esRechazoDelTecnico() {
+        return actor == ActorHistorial.TECNICO && estadoNuevo == EstadoOrden.PENDIENTE;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public OrdenServicio getOrden() { return orden; }

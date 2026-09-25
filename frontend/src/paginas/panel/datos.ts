@@ -1,9 +1,8 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { api } from '../../api/cliente.ts'
 import type { EstadoOrden, OrdenResumen } from '../../tipos.ts'
-import type { EspecialidadItem } from '../portal/tiposPortal.ts'
 import { MESES_ESPANOL } from '../portal/fechas.ts'
-import type { IndicadoresPanel, ReportePanel, RespuestaPaginada, TarifaResumen, TecnicoDisponible } from './tiposPanel.ts'
+import type { AjustesTaller, IndicadoresPanel, ReportePanel, RespuestaPaginada, TarifaResumen, TecnicoDisponible } from './tiposPanel.ts'
 
 /* Cada consulta del panel vive aquí para que la misma clave signifique siempre
    los mismos datos: el diálogo de asignar y la página de equipo comparten la
@@ -46,11 +45,10 @@ export function useTarifas() {
   })
 }
 
-export function useEspecialidadesCatalogo() {
-  return useQuery<EspecialidadItem[]>({
-    queryKey: ['catalogo', 'especialidades'],
-    queryFn: async () => ((await api.get('/catalogo/especialidades')).data as EspecialidadItem[]) ?? [],
-    staleTime: Infinity,
+export function useAjustes() {
+  return useQuery<AjustesTaller>({
+    queryKey: ['panel', 'ajustes'],
+    queryFn: async () => (await api.get('/panel/ajustes')).data as AjustesTaller,
   })
 }
 

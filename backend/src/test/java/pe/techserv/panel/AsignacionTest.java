@@ -26,6 +26,9 @@ import pe.techserv.orden.OrdenHistorial;
 import pe.techserv.orden.OrdenHistorialRepository;
 import pe.techserv.orden.OrdenServicio;
 import pe.techserv.orden.OrdenServicioRepository;
+import pe.techserv.usuario.Rol;
+import pe.techserv.usuario.Usuario;
+import pe.techserv.usuario.UsuarioRepository;
 
 import java.util.List;
 
@@ -61,6 +64,7 @@ class AsignacionTest extends BasePruebaIntegracion {
     @Autowired OrdenHistorialRepository historialRepo;
     @Autowired TecnicoRepository tecnicos;
     @Autowired MypeRepository mypes;
+    @Autowired UsuarioRepository usuarios;
 
     @BeforeEach
     void correoQueNoRevienta() {
@@ -182,23 +186,46 @@ class AsignacionTest extends BasePruebaIntegracion {
     @Order(4)
     @DisplayName("Asignar un técnico que no atiende esa especialidad da 400")
     void tecnicoNoAtiendeEspecialidadDa400() throws Exception {
+        // Por la API ya no se puede crear un técnico así: atiende lo que atiende
+        // su taller. Se fabrica a mano para que la guarda siga probada, por si
+        // una fila vieja o un cambio de especialidad lo dejan desalineado.
+        Tecnico desalineado = tecnicoPropio("desalineado.hogar@serviciosdelgado.pe", Especialidad.SERVICIOS_HOGAR);
         OrdenServicio orden = ordenes.findAll().stream()
                 .filter(o -> o.getMype().getId().equals(mypeDelgado())
                         && o.getEspecialidad() == Especialidad.REPARACION_ELECTRODOMESTICOS)
                 .findFirst().orElseThrow();
-
-        Tecnico carlos = tecnico("carlos.nunez@serviciosdelgado.pe");
 
         mvc.perform(post("/api/panel/ordenes/{id}/asignar", orden.getId())
                         .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                  {"tecnicoId": %d}
-                                 """.formatted(carlos.getId())))
+                                 """.formatted(desalineado.getId())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.estado").value(400))
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Carlos Núñez no atiende " + orden.getEspecialidad().getTitulo()));
+                        "Desalineado Hogar no atiende " + orden.getEspecialidad().getTitulo()));
+    }
+
+    /** Un técnico de Delgado creado a mano, sin pasar por las reglas del alta. */
+    private Tecnico tecnicoPropio(String email, Especialidad especialidad) {
+        return tecnicos.findByUsuarioEmailIgnoreCase(email).orElseGet(() -> {
+            Usuario u = new Usuario();
+            u.setNombres("Desalineado");
+            u.setApellidos("Hogar");
+            u.setEmail(email);
+            u.setClaveHash("sin-clave");
+            u.setRol(Rol.TECNICO);
+            usuarios.save(u);
+            Tecnico t = new Tecnico();
+            t.setUsuario(u);
+            t.setMype(mypes.findById(mypeDelgado()).orElseThrow());
+            // No disponible: así no suma aforo a las franjas de Delgado que
+            // miden otras clases de prueba.
+            t.setDisponible(false);
+            t.getEspecialidades().add(especialidad);
+            return tecnicos.save(t);
+        });
     }
 
     @Test

@@ -26,6 +26,7 @@ export function CabeceraPublica({ sobreHeroe = false }: { sobreHeroe?: boolean }
               <>
                 <span className="hidden max-w-40 truncate px-2 text-publico-acento-tenue sm:inline" title={usuario.nombreCompleto}>{usuario.nombreCompleto}</span>
                 {usuario.rol === 'CLIENTE' && <Link to="/mis-ordenes" className={`inline-flex min-h-11 items-center rounded-lg px-2 text-publico-acento-tenue hover:bg-publico-superficie/10 hover:text-publico-superficie sm:px-3 ${focoOscuro}`}>Mis órdenes</Link>}
+                {usuario.rol === 'CLIENTE' && <Link to="/mi-cuenta" aria-label="Mi cuenta" className={`inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-publico-acento-tenue hover:bg-publico-superficie/10 hover:text-publico-superficie sm:px-3 ${focoOscuro}`}><Icono nombre="engranaje" className="size-4" /><span className="hidden min-[400px]:inline">Mi cuenta</span></Link>}
                 {usuario.rol === 'ADMIN_MYPE' && <Link to="/panel" className={`inline-flex min-h-11 items-center rounded-lg px-2 text-publico-acento-tenue hover:bg-publico-superficie/10 hover:text-publico-superficie sm:px-3 ${focoOscuro}`}>Mi panel</Link>}
                 <button type="button" onClick={salir} className={`min-h-11 rounded-lg border border-publico-acento px-2 font-medium text-publico-acento hover:bg-publico-superficie/10 sm:px-3 ${focoOscuro}`}>Salir</button>
               </>

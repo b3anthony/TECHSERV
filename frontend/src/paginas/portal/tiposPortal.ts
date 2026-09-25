@@ -1,4 +1,5 @@
 import type { Especialidad, EstadoOrden, PasoHistorial } from '../../tipos.ts'
+import type { MetodoPago } from '../panel/tiposPanel.ts'
 
 export interface EspecialidadItem {
   clave: Especialidad
@@ -16,6 +17,8 @@ export interface TallerItem {
   promedio: number
   servicios: number
   atiendeHoy: boolean
+  /** Los que acepta el taller: entre ellos elige el cliente en el paso 5. */
+  metodosPago: MetodoPago[]
 }
 
 export interface FranjaAgenda {
@@ -39,6 +42,7 @@ export interface NuevaReservaPayload {
   distrito: string
   fecha: string
   hora: string
+  metodoPago: MetodoPago
 }
 
 export interface SeguimientoDatos {

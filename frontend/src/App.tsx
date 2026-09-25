@@ -9,6 +9,7 @@ import { Entrar } from './paginas/Entrar.tsx'
 import { Registro } from './paginas/Registro.tsx'
 import { CatalogoReserva } from './paginas/portal/CatalogoReserva.tsx'
 import { Portada } from './paginas/portal/Portada.tsx'
+import { MiCuenta } from './paginas/portal/MiCuenta.tsx'
 import { PortalCliente } from './paginas/portal/PortalCliente.tsx'
 import { PanelRutas } from './paginas/panel/PanelRutas.tsx'
 import { PaginaVisita } from './paginas/visita/PaginaVisita.tsx'
@@ -45,6 +46,14 @@ function AppLayout(): ReactNode {
           <Route path="/reservar" element={<CatalogoReserva />} />
           <Route path="/entrar" element={<Entrar />} />
           <Route path="/registro" element={<Registro />} />
+          <Route
+            path="/mi-cuenta"
+            element={
+              <RutaProtegida rol="CLIENTE">
+                <MiCuenta />
+              </RutaProtegida>
+            }
+          />
           <Route
             path="/mis-ordenes/*"
             element={

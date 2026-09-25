@@ -10,7 +10,11 @@ import { CabeceraPagina, EsqueletoLista, ErrorCarga, Interruptor } from './comun
 import { ESPECIALIDAD_CORTA, ICONO_ESPECIALIDAD, contenedorPanel, iniciales } from './formato.ts'
 import { useTecnicos } from './datos.ts'
 import { DialogoTecnico } from './DialogoTecnico.tsx'
+import { Estrellas } from './PiezasReporte.tsx'
 import type { TecnicoDisponible } from './tiposPanel.ts'
+
+/** Igual que ServicioAdministracion.MAXIMO_TECNICOS: el servidor también lo impone. */
+const MAXIMO_TECNICOS = 10
 
 interface EstadoDialogo {
   abierto: boolean
@@ -40,7 +44,6 @@ export function Equipo(): ReactNode {
         apellidos: t.apellidos,
         telefono: t.telefono ?? '',
         disponible: !t.disponible,
-        especialidades: t.especialidades,
       })
       await queryClient.invalidateQueries({ queryKey: ['panel', 'tecnicos'] })
       setAviso({ tipo: 'exito', texto: `${t.nombreCompleto} ahora está ${t.disponible ? 'no disponible: no aparecerá al asignar' : 'disponible para nuevas visitas'}.` })
@@ -68,14 +71,21 @@ export function Equipo(): ReactNode {
 
   const lista = tecnicos.data ?? []
   const disponibles = lista.filter((t) => t.disponible).length
+  const lleno = lista.length >= MAXIMO_TECNICOS
 
   return (
     <div className={contenedorPanel}>
       <CabeceraPagina
         titulo="Equipo"
-        detalle={tecnicos.data ? `${lista.length} ${lista.length === 1 ? 'técnico' : 'técnicos'} · ${disponibles} ${disponibles === 1 ? 'disponible' : 'disponibles'} para nuevas visitas` : 'Tus técnicos y los servicios que atiende cada uno.'}
-        acciones={<Boton type="button" onClick={() => abrir(null)}><Icono nombre="mas" className="size-4" /> Añadir técnico</Boton>}
+        detalle={tecnicos.data ? `${lista.length} de ${MAXIMO_TECNICOS} técnicos · ${disponibles} ${disponibles === 1 ? 'disponible' : 'disponibles'} para nuevas visitas` : 'Tus técnicos y los servicios que atiende cada uno.'}
+        acciones={<Boton type="button" onClick={() => abrir(null)} disabled={lleno} aria-describedby={lleno ? 'equipo-lleno' : undefined}><Icono nombre="mas" className="size-4" /> Añadir técnico</Boton>}
       />
+
+      {lleno && (
+        <Aviso id="equipo-lleno" tipo="info" className="mb-4">
+          Tu equipo tiene {MAXIMO_TECNICOS} técnicos, el máximo por taller. Para añadir a otro, quita antes a alguien.
+        </Aviso>
+      )}
 
       <div aria-live="polite">
         {aviso && <Aviso tipo={aviso.tipo} className="mb-4">{aviso.texto}</Aviso>}
@@ -102,7 +112,17 @@ export function Equipo(): ReactNode {
                 </span>
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-lg leading-tight font-bold">{t.nombreCompleto}</h2>
-                  <p className="mt-1 text-sm text-publico-tinta-media">
+                  {t.promedio != null ? (
+                    <p className="mt-1 flex items-center gap-1.5 text-sm">
+                      <Estrellas valor={t.promedio} />
+                      <b aria-hidden="true" className="tabular-nums">{t.promedio.toFixed(1)}</b>
+                      <span aria-hidden="true" className="text-publico-tinta-suave tabular-nums">({t.calificaciones})</span>
+                      <span className="sr-only">Calificación {t.promedio.toFixed(1)} de 5, en {t.calificaciones} {t.calificaciones === 1 ? 'servicio calificado' : 'servicios calificados'}</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-publico-tinta-suave">Sin calificaciones todavía</p>
+                  )}
+                  <p className="mt-0.5 text-sm text-publico-tinta-media">
                     {t.ordenesHoy === 0 ? 'Sin visitas hoy' : `${t.ordenesHoy} ${t.ordenesHoy === 1 ? 'visita' : 'visitas'} hoy`}
                   </p>
                 </div>
@@ -161,7 +181,7 @@ export function Equipo(): ReactNode {
             </li>
           ))}
 
-          <li>
+          {!lleno && <li>
             <button
               type="button"
               onClick={() => abrir(null)}
@@ -170,7 +190,7 @@ export function Equipo(): ReactNode {
               <span className="grid size-12 place-items-center rounded-2xl bg-publico-superficie text-publico-tinta shadow-sm shadow-publico-tinta/10"><Icono nombre="mas" className="size-5" /></span>
               <span className="font-bold">Añadir técnico</span>
             </button>
-          </li>
+          </li>}
         </ul>
       )}
 

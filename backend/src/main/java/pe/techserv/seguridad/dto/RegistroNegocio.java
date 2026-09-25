@@ -3,14 +3,18 @@ package pe.techserv.seguridad.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import pe.techserv.comun.Especialidad;
+import pe.techserv.mype.HorarioDia;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * "Quiero registrar mi negocio". Crea de una vez el usuario ADMIN_MYPE, el
- * taller y sus tarifas: sin tarifa no hay nada que ensenarle al cliente en el
- * catalogo, asi que se pide desde el principio.
+ * taller, su especialidad con la tarifa y su horario de atencion: sin tarifa no
+ * hay nada que ensenarle al cliente en el catalogo, y sin horario no hay agenda
+ * que ofrecerle, asi que se piden desde el principio.
+ *
+ * Un taller atiende UNA especialidad.
  */
 public record RegistroNegocio(
         @NotBlank(message = "Escribe tus nombres")
@@ -45,14 +49,15 @@ public record RegistroNegocio(
         @NotBlank(message = "Escribe el distrito")
         @Size(max = 60) String distrito,
 
-        @NotEmpty(message = "Elige al menos una especialidad y ponle su tarifa")
-        @Valid List<TarifaEspecialidad> especialidades) {
+        @NotNull(message = "Elige la especialidad de tu negocio")
+        Especialidad especialidad,
 
-    public record TarifaEspecialidad(
-            @NotNull(message = "Falta la especialidad") Especialidad especialidad,
+        @NotNull(message = "Escribe la tarifa por visita")
+        @DecimalMin(value = "1.00", message = "La tarifa debe ser mayor que cero")
+        @DecimalMax(value = "9999.99", message = "La tarifa no puede pasar de S/ 9,999.99")
+        @Digits(integer = 6, fraction = 2, message = "La tarifa admite hasta 2 decimales")
+        BigDecimal tarifaBase,
 
-            @NotNull(message = "Falta la tarifa")
-            @DecimalMin(value = "1.00", message = "La tarifa debe ser mayor que cero")
-            @Digits(integer = 8, fraction = 2) BigDecimal tarifaBase) {
-    }
+        @NotEmpty(message = "Marca al menos un día de atención")
+        @Valid List<HorarioDia> horarios) {
 }

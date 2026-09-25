@@ -9,7 +9,7 @@ import { Boton } from '../../componentes/publico/Boton.tsx'
 import type { Especialidad } from '../../tipos.ts'
 import { CabeceraPagina, EsqueletoLista, ErrorCarga, TarjetaPanel } from './comun.tsx'
 import { ICONO_ESPECIALIDAD, botonIcono, contenedorPanel, soles } from './formato.ts'
-import { useEspecialidadesCatalogo, useTarifas } from './datos.ts'
+import { useTarifas } from './datos.ts'
 import { DialogoRepuesto } from './DialogoRepuesto.tsx'
 import type { RepuestoCatalogo } from './tiposPanel.ts'
 
@@ -36,21 +36,17 @@ export function Precios(): ReactNode {
 
 function Tarifas({ avisar }: { avisar: (m: Mensaje) => void }): ReactNode {
   const tarifas = useTarifas()
-  const catalogo = useEspecialidadesCatalogo()
   const [editando, setEditando] = useState<Especialidad | null>(null)
-
-  const ofrecidas = new Set(tarifas.data?.map((t) => t.especialidad))
-  const faltan = (catalogo.data ?? []).filter((e) => !ofrecidas.has(e.clave))
 
   return (
     <TarjetaPanel titulo="Tarifa base por visita" icono="etiqueta">
-      <p className="-mt-2 mb-4 text-sm text-publico-tinta-media">Es lo mínimo que cobras por ir al domicilio. Los repuestos y la mano de obra extra se suman al cerrar cada orden.</p>
+      <p className="-mt-2 mb-4 text-sm text-publico-tinta-media">Es lo mínimo que cobras por ir al domicilio. Los repuestos y la mano de obra extra se suman al cerrar cada orden. Cada taller atiende una sola especialidad.</p>
       {tarifas.isPending ? (
-        <EsqueletoLista filas={3} alto="h-24" etiqueta="Cargando tarifas…" />
+        <EsqueletoLista filas={1} alto="h-24" etiqueta="Cargando tarifa…" />
       ) : tarifas.error ? (
         <ErrorCarga mensaje={mensajeDeError(tarifas.error)} reintentar={() => void tarifas.refetch()} />
       ) : (
-        <ul className="grid gap-3 md:grid-cols-3">
+        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {tarifas.data.map((t) => (
             <li key={t.especialidad} className="rounded-xl border border-publico-linea bg-publico-lienzo p-4">
               <p className="flex items-center gap-2 text-sm font-bold">
@@ -62,7 +58,6 @@ function Tarifas({ avisar }: { avisar: (m: Mensaje) => void }): ReactNode {
                   especialidad={t.especialidad}
                   titulo={t.titulo}
                   inicial={t.tarifaBase}
-                  puedeQuitar={(tarifas.data?.length ?? 0) > 1}
                   alTerminar={(m) => { setEditando(null); if (m) avisar(m) }}
                 />
               ) : (
@@ -75,42 +70,22 @@ function Tarifas({ avisar }: { avisar: (m: Mensaje) => void }): ReactNode {
               )}
             </li>
           ))}
-          {faltan.map((e) => (
-            <li key={e.clave} className="rounded-xl border-2 border-dashed border-publico-linea-fuerte p-4">
-              <p className="flex items-center gap-2 text-sm font-bold text-publico-tinta-media">
-                <span className="grid size-8 place-items-center rounded-lg bg-publico-superficie-suave"><Icono nombre={ICONO_ESPECIALIDAD[e.clave]} className="size-4" /></span>
-                {e.titulo}
-              </p>
-              {editando === e.clave ? (
-                <EditorTarifa especialidad={e.clave} titulo={e.titulo} inicial={null} puedeQuitar={false} alTerminar={(m) => { setEditando(null); if (m) avisar(m) }} />
-              ) : (
-                <>
-                  <p className="mt-2 text-sm text-publico-tinta-media">Aún no lo ofreces. {e.detalle}.</p>
-                  <button type="button" onClick={() => { avisar(null); setEditando(e.clave) }} className={`mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-sm font-bold underline decoration-publico-acento decoration-2 underline-offset-4 ${focoClaro}`}>
-                    <Icono nombre="mas" className="size-4" /> Empezar a ofrecerlo
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
         </ul>
       )}
     </TarjetaPanel>
   )
 }
 
-function EditorTarifa({ especialidad, titulo, inicial, puedeQuitar, alTerminar }: {
+function EditorTarifa({ especialidad, titulo, inicial, alTerminar }: {
   especialidad: Especialidad
   titulo: string
   inicial: number | null
-  puedeQuitar: boolean
   alTerminar: (m: Mensaje) => void
 }): ReactNode {
   const queryClient = useQueryClient()
   const [valor, setValor] = useState(inicial != null ? String(inicial) : '')
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
-  const [confirmarQuitar, setConfirmarQuitar] = useState(false)
   const id = `tarifa-${especialidad}`
 
   async function guardar(ev: FormEvent): Promise<void> {
@@ -126,19 +101,6 @@ function EditorTarifa({ especialidad, titulo, inicial, puedeQuitar, alTerminar }
       await api.put(`/panel/tarifas/${especialidad}`, { tarifaBase: Math.round(n * 100) / 100 })
       await queryClient.invalidateQueries({ queryKey: ['panel', 'tarifas'] })
       alTerminar({ tipo: 'exito', texto: `${titulo}: la visita ahora cuesta ${soles(n)}.` })
-    } catch (err) {
-      setError(mensajeDeError(err))
-      setGuardando(false)
-    }
-  }
-
-  async function quitar(): Promise<void> {
-    setGuardando(true)
-    setError(null)
-    try {
-      await api.delete(`/panel/tarifas/${especialidad}`)
-      await queryClient.invalidateQueries({ queryKey: ['panel', 'tarifas'] })
-      alTerminar({ tipo: 'exito', texto: `Dejaste de ofrecer ${titulo.toLowerCase()}.` })
     } catch (err) {
       setError(mensajeDeError(err))
       setGuardando(false)
@@ -163,27 +125,10 @@ function EditorTarifa({ especialidad, titulo, inicial, puedeQuitar, alTerminar }
         className={`min-h-12 w-full rounded-lg border bg-publico-superficie px-3 text-lg font-bold tabular-nums ${error ? 'border-publico-peligro' : 'border-publico-linea-fuerte'} ${focoClaro}`}
       />
       <p id={`${id}-error`} role="alert" className="min-h-5 text-xs font-bold text-publico-peligro">{error ?? ''}</p>
-      {confirmarQuitar ? (
-        <div className="grid gap-2 rounded-lg border border-publico-peligro/40 p-3 text-sm">
-          <p>¿Dejar de ofrecer {titulo.toLowerCase()}? Los clientes ya no podrán pedirlo.</p>
-          <div className="flex gap-2">
-            <Boton type="button" variante="secundario" className="flex-1 px-2" onClick={() => setConfirmarQuitar(false)} disabled={guardando}>No</Boton>
-            <Boton type="button" variante="peligro" className="flex-1 px-2" onClick={() => void quitar()} cargando={guardando}>Sí, quitar</Boton>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="flex gap-2">
-            <Boton type="button" variante="secundario" className="flex-1 px-2" onClick={() => alTerminar(null)} disabled={guardando}>Cancelar</Boton>
-            <Boton type="submit" className="flex-1 px-2" cargando={guardando}>Guardar</Boton>
-          </div>
-          {puedeQuitar && (
-            <button type="button" onClick={() => setConfirmarQuitar(true)} className={`min-h-11 justify-self-start rounded-lg px-1 text-sm font-bold text-publico-tinta-suave hover:text-publico-peligro ${focoClaro}`}>
-              Dejar de ofrecer este servicio
-            </button>
-          )}
-        </>
-      )}
+      <div className="flex gap-2">
+        <Boton type="button" variante="secundario" className="flex-1 px-2" onClick={() => alTerminar(null)} disabled={guardando}>Cancelar</Boton>
+        <Boton type="submit" className="flex-1 px-2" cargando={guardando}>Guardar</Boton>
+      </div>
     </form>
   )
 }

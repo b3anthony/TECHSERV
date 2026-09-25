@@ -59,6 +59,7 @@ public class ConfiguracionSeguridad {
                 // el resto, con sesión
                 .requestMatchers("/api/panel/**").hasRole("ADMIN_MYPE")
                 .requestMatchers("/api/mis-ordenes/**").hasRole("CLIENTE")
+                .requestMatchers("/api/mi-cuenta/**").hasRole("CLIENTE")
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e
                 .authenticationEntryPoint((peticion, respuesta, ex) ->

@@ -9,7 +9,10 @@ import { Selector } from '../componentes/publico/Selector.tsx'
 import { Boton } from '../componentes/publico/Boton.tsx'
 import { Aviso } from '../componentes/publico/Aviso.tsx'
 import { TarjetaAcceso } from '../componentes/publico/TarjetaAcceso.tsx'
-import type { ErrorApi, RespuestaSesion } from '../tipos.ts'
+import { EditorHorario } from '../componentes/publico/EditorHorario.tsx'
+import { aHorarios, diasEditables, problemaHorario } from '../componentes/publico/horario.ts'
+import type { DiaEditable } from '../componentes/publico/horario.ts'
+import type { Especialidad, ErrorApi, RespuestaSesion } from '../tipos.ts'
 import axios from 'axios'
 
 type Pestana = 'cliente' | 'negocio'
@@ -223,9 +226,10 @@ function FormularioNegocio(): ReactNode {
     direccion: '',
     distrito: '',
   })
-  const [especialidades, setEspecialidades] = useState([
-    { especialidad: 'SERVICIOS_HOGAR' as const, tarifaBase: '' },
-  ])
+  // Un negocio atiende una sola especialidad.
+  const [especialidad, setEspecialidad] = useState<Especialidad>('SERVICIOS_HOGAR')
+  const [tarifaBase, setTarifaBase] = useState('')
+  const [dias, setDias] = useState<DiaEditable[]>(() => diasEditables())
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [errorGeneral, setErrorGeneral] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -234,35 +238,23 @@ function FormularioNegocio(): ReactNode {
     setCampos((prev) => ({ ...prev, [campo]: valor }))
   }
 
-  function actualizarEspecialidad(indice: number, campo: 'especialidad' | 'tarifaBase', valor: string) {
-    setEspecialidades((prev) =>
-      prev.map((item, i) => (i === indice ? { ...item, [campo]: valor } : item)),
-    )
-  }
-
-  function agregarEspecialidad() {
-    setEspecialidades((prev) => [
-      ...prev,
-      { especialidad: 'SERVICIOS_HOGAR' as const, tarifaBase: '' },
-    ])
-  }
-
-  function quitarEspecialidad(indice: number) {
-    setEspecialidades((prev) => prev.filter((_, i) => i !== indice))
-  }
-
   async function manejarEnvio(e: FormEvent) {
     e.preventDefault()
     setErrores({})
     setErrorGeneral('')
+
+    const problema = problemaHorario(dias)
+    if (problema) {
+      setErrores({ horarios: problema })
+      return
+    }
     setEnviando(true)
 
     const cuerpo = {
       ...campos,
-      especialidades: especialidades.map((esp) => ({
-        especialidad: esp.especialidad,
-        tarifaBase: esp.tarifaBase ? Number(esp.tarifaBase) : null,
-      })),
+      especialidad,
+      tarifaBase: tarifaBase ? Number(tarifaBase) : null,
+      horarios: aHorarios(dias),
     }
 
     try {
@@ -397,57 +389,37 @@ function FormularioNegocio(): ReactNode {
         />
       </div>
 
-      {/* Especialidades con tarifa */}
-      <fieldset className="mt-3 space-y-3">
-        <legend className="text-sm font-bold text-publico-tinta">Especialidades y tarifas</legend>
+      {/* La especialidad del negocio, con su tarifa: una sola por negocio */}
+      <div className="grid items-start gap-x-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <Selector
+          id="especialidad"
+          etiqueta="Especialidad"
+          ayuda="Cada negocio atiende una sola especialidad."
+          value={especialidad}
+          onChange={(e) => setEspecialidad(e.target.value as Especialidad)}
+          error={errores['especialidad']}
+        >
+          <option value="SERVICIOS_HOGAR">Servicios del hogar</option>
+          <option value="SOPORTE_INFORMATICO">Soporte técnico e informático</option>
+          <option value="REPARACION_ELECTRODOMESTICOS">Reparación de electrodomésticos</option>
+        </Selector>
+        <CampoTexto
+          id="tarifaBase"
+          etiqueta="Tarifa por visita (S/)"
+          type="number"
+          inputMode="decimal"
+          min="1"
+          step="0.01"
+          value={tarifaBase}
+          onChange={(e) => setTarifaBase(e.target.value)}
+          error={errores['tarifaBase']}
+          required
+        />
+      </div>
 
-        {especialidades.map((esp, i) => (
-          <div key={i} className="flex flex-col gap-3 rounded-lg border border-publico-linea bg-publico-superficie-suave p-3 sm:flex-row sm:items-end">
-            <Selector
-              id={`especialidad-${i}`}
-              etiqueta="Especialidad"
-              value={esp.especialidad}
-              onChange={(e) => actualizarEspecialidad(i, 'especialidad', e.target.value)}
-              className="flex-1 min-w-0"
-            >
-              <option value="SERVICIOS_HOGAR">Servicios del hogar</option>
-              <option value="SOPORTE_INFORMATICO">Soporte técnico e informático</option>
-              <option value="REPARACION_ELECTRODOMESTICOS">Reparación de electrodomésticos</option>
-            </Selector>
-
-            <div className="flex items-end gap-3">
-              <CampoTexto
-                id={`tarifa-${i}`}
-                etiqueta="Tarifa base (S/)"
-                type="number"
-                min="1"
-                step="0.01"
-                value={esp.tarifaBase}
-                onChange={(e) => actualizarEspecialidad(i, 'tarifaBase', e.target.value)}
-                className="w-32 flex-1 sm:flex-none"
-              />
-
-              {especialidades.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => quitarEspecialidad(i)}
-                  className="mb-0.5 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-3 py-2 text-xs font-bold text-publico-peligro hover:bg-publico-superficie focus:outline-none focus:ring-2 focus:ring-publico-acento focus:ring-offset-2 focus:ring-offset-publico-superficie"
-                >
-                  Quitar
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <p role={errores['especialidades'] ? 'alert' : undefined} className="min-h-5 text-xs font-bold text-publico-peligro">
-          {errores['especialidades']}
-        </p>
-
-        <Boton type="button" variante="secundario" onClick={agregarEspecialidad}>
-          Agregar especialidad
-        </Boton>
-      </fieldset>
+      <div className="mt-2">
+        <EditorHorario id="horario" dias={dias} alCambiar={setDias} error={errores['horarios']} />
+      </div>
 
       <Boton type="submit" cargando={enviando} className="mt-4 w-full">
         Crear cuenta de negocio

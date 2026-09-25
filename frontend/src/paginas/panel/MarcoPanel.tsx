@@ -22,6 +22,7 @@ const SECCIONES: Seccion[] = [
   { a: '/panel/equipo', texto: 'Equipo', icono: 'equipo' },
   { a: '/panel/precios', texto: 'Precios', icono: 'etiqueta' },
   { a: '/panel/reportes', texto: 'Reportes', icono: 'grafico' },
+  { a: '/panel/ajustes', texto: 'Ajustes', icono: 'engranaje' },
 ]
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']

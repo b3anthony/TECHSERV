@@ -1,11 +1,13 @@
 package pe.techserv.visita;
 
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pe.techserv.panel.dto.CierreOrden;
 import pe.techserv.panel.dto.RegistroPago;
 import pe.techserv.visita.dto.AccionVisita;
+import pe.techserv.visita.dto.RechazoVisita;
 import pe.techserv.visita.dto.VistaVisita;
 
 import java.util.List;
@@ -33,6 +35,17 @@ public class ControladorVisita {
     @PostMapping("/confirmar")
     public VistaVisita confirmar(@PathVariable String token) {
         return visitas.avanzar(token, AccionVisita.CONFIRMAR);
+    }
+
+    /**
+     * «No puedo ir»: la orden vuelve al taller para que la asigne a otro. No
+     * devuelve la vista porque el enlace deja de valer en ese momento.
+     */
+    @PostMapping("/rechazar")
+    public ResponseEntity<Void> rechazar(@PathVariable String token,
+                                         @Valid @RequestBody(required = false) RechazoVisita peticion) {
+        visitas.rechazar(token, peticion == null ? null : peticion.motivo());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/en-camino")

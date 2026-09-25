@@ -133,6 +133,7 @@ export function Bandeja(): JSX.Element {
                     {o.descripcionFalla}
                   </Link>
                 </h3>
+                {o.rechazo && <p className="mt-1.5 flex items-start gap-1.5 text-sm font-bold text-publico-peligro"><Icono nombre="pausa" className="mt-0.5 size-4 shrink-0" />{o.rechazo}</p>}
                 <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-publico-tinta-media">
                   <span className="inline-flex items-center gap-1.5 first-letter:uppercase"><Icono nombre="calendario" className="size-4 text-publico-tinta-suave" />{cuando(o)}</span>
                   <span className="inline-flex items-center gap-1.5"><Icono nombre="pin" className="size-4 text-publico-tinta-suave" />{o.distrito}</span>
@@ -179,6 +180,7 @@ export function Bandeja(): JSX.Element {
                       <Link to={`/panel/ordenes/${o.id}`} className={`mt-0.5 line-clamp-1 rounded font-bold first-letter:uppercase hover:underline hover:decoration-publico-acento hover:decoration-2 hover:underline-offset-4 ${focoClaro}`}>
                         {o.descripcionFalla}
                       </Link>
+                      {o.rechazo && <span className="mt-1 flex items-start gap-1 text-xs font-bold text-publico-peligro"><Icono nombre="pausa" className="mt-px size-3.5 shrink-0" />{o.rechazo}</span>}
                     </td>
                     <td className="px-4 py-3 align-top">
                       <span className="block truncate">{o.clienteNombre}</span>

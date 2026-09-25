@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import pe.techserv.comun.Especialidad;
 import pe.techserv.mype.Mype;
 import pe.techserv.mype.Tecnico;
+import pe.techserv.pago.MetodoPago;
 import pe.techserv.usuario.Cliente;
 
 import java.math.BigDecimal;
@@ -75,6 +76,11 @@ public class OrdenServicio {
     @Column(nullable = false, length = 20)
     private EstadoOrden estado = EstadoOrden.PENDIENTE;
 
+    /** Cómo dijo el cliente que pagaría. NULL en las órdenes de antes de poder elegirlo. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pago", length = 20)
+    private MetodoPago metodoPago;
+
     @Column(columnDefinition = "text")
     private String diagnostico;
 
@@ -145,6 +151,8 @@ public class OrdenServicio {
     public void setHoraProgramada(LocalTime horaProgramada) { this.horaProgramada = horaProgramada; }
     public EstadoOrden getEstado() { return estado; }
     public void setEstado(EstadoOrden estado) { this.estado = estado; }
+    public MetodoPago getMetodoPago() { return metodoPago; }
+    public void setMetodoPago(MetodoPago metodoPago) { this.metodoPago = metodoPago; }
     public String getDiagnostico() { return diagnostico; }
     public void setDiagnostico(String diagnostico) { this.diagnostico = diagnostico; }
     public BigDecimal getPrecioManoObra() { return precioManoObra; }

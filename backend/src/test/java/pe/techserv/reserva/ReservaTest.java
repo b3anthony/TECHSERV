@@ -81,7 +81,7 @@ class ReservaTest extends BasePruebaIntegracion {
     @Test
     @DisplayName("No se puede reservar una especialidad que ese taller no atiende")
     void especialidadQueNoAtiendeDa400() throws Exception {
-        // Reparaciones La Libertad solo ofrece electrodomésticos y hogar.
+        // Reparaciones La Libertad solo ofrece servicios del hogar.
         Long taller = mypes.findAll().stream()
                 .filter(m -> m.getRuc().equals("20605554443"))
                 .findFirst().orElseThrow().getId();
@@ -172,7 +172,8 @@ class ReservaTest extends BasePruebaIntegracion {
                            "referencia": "Frente al parque",
                            "distrito": "Trujillo",
                            "fecha": "%s",
-                           "hora": "%s"
+                           "hora": "%s",
+                           "metodoPago": "EFECTIVO"
                          }
                          """.formatted(taller, especialidad, fecha, hora)));
     }

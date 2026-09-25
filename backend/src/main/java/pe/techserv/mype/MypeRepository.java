@@ -1,14 +1,27 @@
 package pe.techserv.mype;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.techserv.comun.Especialidad;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface MypeRepository extends JpaRepository<Mype, Long> {
+
+    /**
+     * El taller con su fila bloqueada (SELECT ... FOR UPDATE) hasta que acabe la
+     * transaccion. Lo usan las operaciones que cuentan algo del taller y luego
+     * escriben segun la cuenta —el tope de tecnicos, cerrar la cuenta—: sin el
+     * bloqueo, dos peticiones a la vez leerian la misma cuenta y las dos pasarian.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Mype m WHERE m.id = :id")
+    Optional<Mype> bloquear(@Param("id") Long id);
 
     /**
      * El catalogo publico: los talleres que atienden una especialidad, con su

@@ -1,7 +1,6 @@
 package pe.techserv.panel.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import pe.techserv.comun.Especialidad;
@@ -23,6 +22,6 @@ public record ActualizarTecnico(
         @NotNull(message = "Indica si el técnico está disponible")
         Boolean disponible,
 
-        @NotEmpty(message = "Elige al menos una especialidad")
+        /** Opcional: si no llega, el técnico atiende la especialidad del taller. */
         List<Especialidad> especialidades
 ) {}

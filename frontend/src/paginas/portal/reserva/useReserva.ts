@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, mensajeDeError } from '../../../api/cliente.ts'
 import { useSesion } from '../../../sesion/SesionProvider.tsx'
 import type { Especialidad, OrdenDetalle } from '../../../tipos.ts'
+import type { MetodoPago } from '../../panel/tiposPanel.ts'
 import type {
   AgendaDia,
   EspecialidadItem,
@@ -27,6 +28,7 @@ interface BorradorReserva {
   fecha?: string
   hora?: string
   especialidad?: Especialidad
+  metodoPago?: MetodoPago
 }
 
 function leerBorradorInicial(): BorradorReserva | null {
@@ -110,6 +112,13 @@ export function useReserva() {
   )
   const [direccion, setDireccion] = useState(() => borradorInicial?.direccion ?? '')
   const [referencia, setReferencia] = useState(() => borradorInicial?.referencia ?? '')
+  const [metodoElegido, setMetodoPago] = useState<MetodoPago | null>(() => borradorInicial?.metodoPago ?? null)
+  // Vale solo si el taller elegido lo acepta: al cambiar de taller se vuelve a
+  // elegir. Si el taller acepta uno solo, ya está elegido.
+  const aceptadosTaller = tallerSeleccionado?.metodosPago ?? []
+  const metodoPago = metodoElegido && aceptadosTaller.includes(metodoElegido)
+    ? metodoElegido
+    : aceptadosTaller.length === 1 ? aceptadosTaller[0] : null
   const [distrito, setDistrito] = useState(() => distritoUrl && DISTRITOS_TRUJILLO.includes(distritoUrl) ? distritoUrl : borradorInicial?.distrito ?? 'Trujillo')
   // Fotos
   const [fotos, setFotos] = useState<FotoCargada[]>([])
@@ -381,9 +390,12 @@ export function useReserva() {
     if (!horaSeleccionada) {
       err.hora = 'Por favor elige una franja horaria.'
     }
+    if (!metodoPago) {
+      err.metodoPago = 'Elige cómo vas a pagar.'
+    }
 
     setErrores(err)
-    const primero = ['especialidad', 'taller', 'fecha', 'hora', 'descripcionFalla', 'direccion', 'distrito'].find((clave) => err[clave])
+    const primero = ['especialidad', 'taller', 'fecha', 'hora', 'descripcionFalla', 'direccion', 'distrito', 'metodoPago'].find((clave) => err[clave])
     if (primero) {
       const selectores: Record<string, string> = {
         especialidad: `#${CSS.escape(idHeadingEspecialidad)} [role="radio"]`,
@@ -393,6 +405,7 @@ export function useReserva() {
         descripcionFalla: '#falla',
         direccion: '#direccion',
         distrito: '#distrito',
+        metodoPago: '#paso-pago input[type="radio"]',
       }
       requestAnimationFrame(() => {
         const control = document.querySelector<HTMLElement>(selectores[primero])
@@ -415,7 +428,7 @@ export function useReserva() {
       return
     }
 
-    if (!tallerSeleccionado || !especialidadSeleccionada) return
+    if (!tallerSeleccionado || !especialidadSeleccionada || !metodoPago) return
 
     // Guardar siempre el borrador
     sessionStorage.setItem(
@@ -429,6 +442,7 @@ export function useReserva() {
         distrito,
         fecha,
         hora: horaSeleccionada,
+        metodoPago,
       }),
     )
 
@@ -449,6 +463,7 @@ export function useReserva() {
       distrito: distrito.trim(),
       fecha,
       hora: horaSeleccionada,
+      metodoPago,
     }
 
     try {
@@ -508,8 +523,9 @@ export function useReserva() {
     Boolean(tallerSeleccionado),
     Boolean(fecha && agenda?.fecha === fecha && agenda.franjas.some((franja) => franja.disponible && franja.hora.startsWith(horaSeleccionada))),
     descripcionFalla.trim().length >= 10 && Boolean(direccion.trim()) && Boolean(distrito.trim()),
+    Boolean(metodoPago),
   ]
-  const pasosPendientes = ['especialidad', 'taller', 'día y hora', 'dirección y detalle'].filter((_, indice) => !pasosCompletos[indice])
+  const pasosPendientes = ['especialidad', 'taller', 'día y hora', 'dirección y detalle', 'método de pago'].filter((_, indice) => !pasosCompletos[indice])
 
   return {
     usuario, especialidades, cargandoEspecialidades, errorEspecialidades, recargarEspecialidades,
@@ -517,6 +533,7 @@ export function useReserva() {
     talleres, ordenTalleres, setOrdenTalleres, cargandoTalleres, errorTalleres, recargarTalleres, tallerSeleccionado, setTallerSeleccionado,
     fecha, inicioTira, elegirFecha, agenda, cargandoAgenda, errorAgenda, horaSeleccionada, setHoraSeleccionada,
     descripcionFalla, setDescripcionFalla, direccion, setDireccion, referencia, setReferencia, distrito, setDistrito,
+    metodoPago, setMetodoPago,
     fotos, errorFotos, agregarArchivos, quitarFoto, errores, setErrores, errorEnvio, enviando,
     ordenConfirmada, avisoFotosError, dialogRef, inputArchivosRef, idInputArchivos,
     idHeadingEspecialidad, idHeadingTalleres, manejarTecladoEspecialidad, manejarTecladoTaller,

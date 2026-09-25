@@ -94,6 +94,13 @@ public class ControladorAccionTecnico {
             return "tecnico/accion-invalida";
         }
 
+        // La orden tiene que seguir siendo suya: si dijo que no podía ir y el
+        // taller se la dio a otro, sus botones viejos ya no la mueven.
+        if (orden.getTecnico() == null || !orden.getTecnico().getId().equals(fila.getTecnico().getId())) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return "tecnico/accion-invalida";
+        }
+
         String accionClaim = claims.get("accion", String.class);
         if (accionClaim == null || fila.getAccion() == null || !accionClaim.equals(fila.getAccion().name())) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
