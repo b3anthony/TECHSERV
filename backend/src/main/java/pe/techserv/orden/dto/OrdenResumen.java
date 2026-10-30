@@ -4,6 +4,8 @@ import pe.techserv.comun.Especialidad;
 import pe.techserv.orden.EstadoOrden;
 import pe.techserv.orden.OrdenHistorial;
 import pe.techserv.orden.OrdenServicio;
+import pe.techserv.orden.TipoOrden;
+import pe.techserv.garantia.dto.GarantiaResumen;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -25,11 +27,18 @@ public record OrdenResumen(Long id,
                            String tecnicoNombre,
                            int cantidadFotos,
                            /** Solo para el taller: la nota del técnico que dijo que no puede ir, si es lo último que pasó. */
-                           String rechazo) {
+                           String rechazo,
+                           TipoOrden tipo,
+                           Long mypeId,
+                           GarantiaResumen garantia) {
 
     /** Para el cliente: sin los asuntos entre el técnico y el taller. */
     public static OrdenResumen de(OrdenServicio o) {
-        return de(o, null);
+        return componer(o, null, null);
+    }
+
+    public static OrdenResumen de(OrdenServicio o, GarantiaResumen garantia) {
+        return componer(o, null, garantia);
     }
 
     /** Para la bandeja del taller: avisa si el técnico devolvió la orden y hay que asignarla otra vez. */
@@ -40,10 +49,10 @@ public record OrdenResumen(Long id,
                         .filter(OrdenHistorial::esRechazoDelTecnico)
                         .map(OrdenHistorial::getNota)
                         .orElse(null);
-        return de(o, rechazo);
+        return componer(o, rechazo, null);
     }
 
-    private static OrdenResumen de(OrdenServicio o, String rechazo) {
+    private static OrdenResumen componer(OrdenServicio o, String rechazo, GarantiaResumen garantia) {
         return new OrdenResumen(
                 o.getId(),
                 o.getCodigo(),
@@ -59,6 +68,6 @@ public record OrdenResumen(Long id,
                 o.getHoraProgramada(),
                 o.getTecnico() == null ? null : o.getTecnico().getUsuario().getNombreCompleto(),
                 o.getFotos().size(),
-                rechazo);
+                rechazo, o.getTipo(), o.getMype().getId(), garantia);
     }
 }

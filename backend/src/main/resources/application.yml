@@ -2,10 +2,19 @@ spring:
   application:
     name: techserv
 
+  # El .env de la raiz (el mismo que lee docker compose), si existe. Asi la
+  # clave de Gemini se pone en un solo sitio y nunca en este archivo.
+  config:
+    import: optional:file:../.env[.properties]
+
+  # MySQL no tiene un tipo con zona horaria: las fechas se guardan como
+  # DATETIME en hora de Lima. connectionTimeZone + forceConnectionTimeZoneToSession
+  # hacen que el driver, NOW() y CURRENT_DATE usen esa misma zona, y que Hibernate
+  # (jdbc.time_zone, abajo) lea y escriba en ella.
   datasource:
-    url: jdbc:postgresql://localhost:55432/${POSTGRES_DB:techserv}
-    username: ${POSTGRES_USER:techserv}
-    password: ${POSTGRES_PASSWORD:techserv_local}
+    url: jdbc:mysql://localhost:33306/${MYSQL_DATABASE:techserv}?connectionTimeZone=America/Lima&forceConnectionTimeZoneToSession=true
+    username: ${MYSQL_USER:techserv}
+    password: ${MYSQL_PASSWORD:techserv_local}
 
   jpa:
     hibernate:
@@ -18,6 +27,10 @@ spring:
         format_sql: true
         jdbc:
           time_zone: America/Lima
+        # Sin esto, en MySQL Hibernate guarda los OffsetDateTime en UTC y la
+        # base acaba con dos relojes: el suyo y el de NOW()/DEFAULT, en Lima.
+        timezone:
+          default_storage: NORMALIZE
 
   flyway:
     enabled: true
@@ -53,6 +66,13 @@ techserv:
   url-frontend: ${TECHSERV_URL_FRONTEND:http://localhost:5173}
   subidas:
     directorio: ${TECHSERV_SUBIDAS:../uploads}
+  ia:
+    clave: ${GEMINI_API_KEY:}
+    modelo: ${TECHSERV_IA_MODELO:gemini-3.8-flash}
+    # Si el principal esta saturado (503), se pasa a este.
+    modelo-respaldo: ${TECHSERV_IA_MODELO_RESPALDO:gemini-3.5-flash}
+    url-base: ${TECHSERV_IA_URL:https://generativelanguage.googleapis.com/v1beta}
+    max-bytes-fotos: ${TECHSERV_IA_MAX_BYTES_FOTOS:14000000}
 
 springdoc:
   swagger-ui:

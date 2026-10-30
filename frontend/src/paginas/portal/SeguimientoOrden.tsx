@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Icono } from '../../componentes/Icono.tsx'
+import { TarjetaAntecedente } from '../../componentes/garantia/TarjetaAntecedente.tsx'
 import type { IconoNombre } from '../../componentes/Icono.tsx'
 import { focoClaro, focoOscuro } from '../../componentes/marco/foco.ts'
 import { AreaTexto } from '../../componentes/publico/AreaTexto.tsx'
@@ -14,6 +15,7 @@ import type { DetalleCalificacionDatos, SeguimientoDatos } from './tiposPortal.t
 import { fechaAmigable, formatearFecha, formatearMomento, horaCorta } from './fechas.ts'
 import { BarraEtapas } from './ordenes/BarraEtapas.tsx'
 import { ETIQUETA_PASO, mensajeEstado } from './ordenes/etapas.ts'
+import { GarantiaCliente } from './GarantiaCliente.tsx'
 
 const soles = (n: number) => `S/ ${n.toFixed(2)}`
 
@@ -375,6 +377,8 @@ function ContenidoSeguimiento({ seguimiento, detalle, actualizando, actualizar, 
   const pasoCancelacion = cancelada ? seguimiento.pasos[seguimiento.pasos.length - 1] : null
   const fotosTrabajo = detalle?.fotosTrabajo ?? []
   const hizo = detalle && (detalle.diagnostico || detalle.total != null || detalle.repuestos.length > 0 || fotosTrabajo.length > 0)
+  const garantia = seguimiento.garantia ?? detalle?.garantia
+  const antecedente = seguimiento.atencionGarantia ?? detalle?.atencionGarantia
 
   return (
     <div className="grid gap-6">
@@ -384,6 +388,7 @@ function ContenidoSeguimiento({ seguimiento, detalle, actualizando, actualizar, 
           <p className="text-sm text-publico-acento-tenue">
             Orden <b className="tabular-nums text-publico-superficie">{seguimiento.codigo}</b>
             {detalle && <> · {detalle.etiquetaEspecialidad}</>}
+            {seguimiento.tipo === 'GARANTIA' && <span className="ml-2 inline-block rounded-md bg-publico-acento-tenue px-2 py-0.5 text-xs font-bold text-publico-chip-texto">Garantía</span>}
           </p>
           <button
             type="button"
@@ -414,12 +419,15 @@ function ContenidoSeguimiento({ seguimiento, detalle, actualizando, actualizar, 
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid min-w-0 gap-6">
+          {seguimiento.tipo === 'NORMAL' && (seguimiento.estado === 'COMPLETADA' || seguimiento.estado === 'CALIFICADA') && garantia && detalle && <GarantiaCliente ordenId={detalle.id} mypeId={detalle.mypeId} codigo={seguimiento.codigo} garantia={garantia} mostrarRepuestos />}
+          {antecedente && <TarjetaAntecedente garantia={antecedente} enlaceOriginal={`/mis-ordenes/${antecedente.ordenOriginalId}`} />}
           {calificar}
           {calificacion}
 
           {hizo && (
             <Tarjeta aria-labelledby="titulo-trabajo">
               <h2 id="titulo-trabajo" className="text-lg font-bold">Lo que hizo el técnico</h2>
+              {seguimiento.tipo === 'GARANTIA' && detalle.total === 0 && <p className="mt-2 text-sm font-bold text-publico-completada">Sin cobro: atención por garantía</p>}
               {detalle.diagnostico && <p className="mt-2 text-sm/[1.55] text-publico-tinta-media first-letter:uppercase">{detalle.diagnostico}</p>}
               {fotosTrabajo.length > 0 && (
                 <ul aria-label="Fotos del trabajo" className="mt-4 grid grid-cols-3 gap-2">

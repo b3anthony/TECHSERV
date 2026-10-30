@@ -2,7 +2,7 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { api } from '../../api/cliente.ts'
 import type { EstadoOrden, OrdenResumen } from '../../tipos.ts'
 import { MESES_ESPANOL } from '../portal/fechas.ts'
-import type { AjustesTaller, IndicadoresPanel, ReportePanel, RespuestaPaginada, TarifaResumen, TecnicoDisponible } from './tiposPanel.ts'
+import type { AjustesTaller, ConteosBandeja, DatosCobro, IndicadoresPanel, ReportePanel, RespuestaPaginada, TarifaResumen, TecnicoDisponible } from './tiposPanel.ts'
 
 /* Cada consulta del panel vive aquí para que la misma clave signifique siempre
    los mismos datos: el diálogo de asignar y la página de equipo comparten la
@@ -19,14 +19,45 @@ export function useIndicadores() {
   })
 }
 
-export function useOrdenes(estado: EstadoOrden | '', pagina: number, tamano: number) {
+/** Lo que la bandeja manda al servidor además de la etapa y la página. */
+export interface FiltrosBandeja {
+  q?: string
+  tecnicoId?: number
+  sinTecnico?: boolean
+  desde?: string
+  hasta?: string
+  orden?: 'RECIENTES' | 'PROXIMAS'
+}
+
+function paramsDe(filtros: FiltrosBandeja): Record<string, string | number | boolean> {
+  const p: Record<string, string | number | boolean> = {}
+  if (filtros.q) p.q = filtros.q
+  if (filtros.tecnicoId != null) p.tecnicoId = filtros.tecnicoId
+  if (filtros.sinTecnico) p.sinTecnico = true
+  if (filtros.desde) p.desde = filtros.desde
+  if (filtros.hasta) p.hasta = filtros.hasta
+  if (filtros.orden) p.orden = filtros.orden
+  return p
+}
+
+export function useOrdenes(estado: EstadoOrden | '', pagina: number, tamano: number, filtros: FiltrosBandeja = {}) {
   return useQuery<RespuestaPaginada<OrdenResumen>>({
-    queryKey: ['panel', 'ordenes', estado, pagina, tamano],
+    queryKey: ['panel', 'ordenes', estado, pagina, tamano, filtros],
     queryFn: async () => {
-      const params: Record<string, string | number> = { pagina, tamano }
+      const params: Record<string, string | number | boolean> = { ...paramsDe(filtros), pagina, tamano }
       if (estado) params.estado = estado
       return (await api.get('/panel/ordenes', { params })).data as RespuestaPaginada<OrdenResumen>
     },
+    placeholderData: (anterior) => anterior,
+  })
+}
+
+/** Cuántas órdenes de cada etapa cumplen los filtros: los números de las pestañas. */
+export function useConteosOrdenes(filtros: FiltrosBandeja = {}) {
+  const { orden: _orden, ...sinOrden } = filtros
+  return useQuery<ConteosBandeja>({
+    queryKey: ['panel', 'ordenes-conteos', sinOrden],
+    queryFn: async () => (await api.get('/panel/ordenes/conteos', { params: paramsDe(sinOrden) })).data as ConteosBandeja,
     placeholderData: (anterior) => anterior,
   })
 }
@@ -49,6 +80,13 @@ export function useAjustes() {
   return useQuery<AjustesTaller>({
     queryKey: ['panel', 'ajustes'],
     queryFn: async () => (await api.get('/panel/ajustes')).data as AjustesTaller,
+  })
+}
+
+export function useDatosCobro() {
+  return useQuery<DatosCobro>({
+    queryKey: ['panel', 'ajustes', 'cobro'],
+    queryFn: async () => (await api.get<DatosCobro>('/panel/ajustes/cobro')).data,
   })
 }
 

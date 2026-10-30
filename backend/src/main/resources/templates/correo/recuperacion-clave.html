@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head><meta charset="UTF-8"><title>Recupera tu contraseña de TechServ</title></head>
+<body style="font-family: sans-serif; font-size: 16px; line-height: 1.5;">
+  <h1>Recupera tu contraseña de TechServ</h1>
+  <p>Hola, <span th:text="${nombre}">Nombre</span>.</p>
+  <p>Recibimos una solicitud para recuperar la contraseña de tu cuenta, a nombre de <span th:text="${nombre}">Nombre</span>.</p>
+  <p><a th:href="${enlace}">Crear una contraseña nueva</a></p>
+  <p>Este enlace vale 30 minutos y solo puede usarse una vez.</p>
+  <p>Si no fuiste tú, ignora este correo; tu contraseña no cambia.</p>
+</body>
+</html>

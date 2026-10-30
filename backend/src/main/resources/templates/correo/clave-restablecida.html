@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head><meta charset="UTF-8"><title>Tu contraseña de TechServ cambió</title></head>
+<body style="font-family: sans-serif; font-size: 16px; line-height: 1.5;">
+  <h1>Tu contraseña de TechServ cambió</h1>
+  <p>Hola, <span th:text="${nombre}">Nombre</span>.</p>
+  <p>Cambiaste tu contraseña el <span th:text="${fecha}">Fecha</span>.</p>
+  <p>Si no fuiste tú, recupérala ya y avisa al taller/soporte.</p>
+  <p><a th:href="${enlaceRecuperar}">Recuperar mi contraseña</a></p>
+</body>
+</html>

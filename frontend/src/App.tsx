@@ -7,6 +7,9 @@ import { MarcoPrivado } from './componentes/marco/MarcoPrivado.tsx'
 import { RutaProtegida } from './rutas/RutaProtegida.tsx'
 import { Entrar } from './paginas/Entrar.tsx'
 import { Registro } from './paginas/Registro.tsx'
+import { RecuperarClave } from './paginas/RecuperarClave.tsx'
+import { RestablecerClave } from './paginas/RestablecerClave.tsx'
+import { CuentaEliminada } from './paginas/CuentaEliminada.tsx'
 import { CatalogoReserva } from './paginas/portal/CatalogoReserva.tsx'
 import { Portada } from './paginas/portal/Portada.tsx'
 import { MiCuenta } from './paginas/portal/MiCuenta.tsx'
@@ -46,6 +49,9 @@ function AppLayout(): ReactNode {
           <Route path="/reservar" element={<CatalogoReserva />} />
           <Route path="/entrar" element={<Entrar />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/recuperar-clave" element={<RecuperarClave />} />
+          <Route path="/restablecer-clave/:token" element={<RestablecerClave />} />
+          <Route path="/cuenta-eliminada" element={<CuentaEliminada />} />
           <Route
             path="/mi-cuenta"
             element={

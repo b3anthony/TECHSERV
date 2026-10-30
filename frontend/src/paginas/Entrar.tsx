@@ -7,6 +7,7 @@ import { CampoTexto } from '../componentes/publico/CampoTexto.tsx'
 import { Boton } from '../componentes/publico/Boton.tsx'
 import { Aviso } from '../componentes/publico/Aviso.tsx'
 import { TarjetaAcceso } from '../componentes/publico/TarjetaAcceso.tsx'
+import { focoClaro } from '../componentes/marco/foco.ts'
 import { mensajeDeError } from '../api/cliente.ts'
 import type { ErrorApi } from '../tipos.ts'
 
@@ -78,16 +79,21 @@ export function Entrar(): ReactNode {
           error={errores['email']}
         />
 
-        <CampoTexto
-          id="clave-entrar"
-          etiqueta="Contraseña"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={clave}
-          onChange={(e) => setClave(e.target.value)}
-          error={errores['clave']}
-        />
+        <div>
+          <CampoTexto
+            id="clave-entrar"
+            etiqueta="Contraseña"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={clave}
+            onChange={(e) => setClave(e.target.value)}
+            error={errores['clave']}
+          />
+          <Link to="/recuperar-clave" className={`inline-flex min-h-11 items-center rounded-sm text-sm font-bold text-publico-tinta underline decoration-publico-acento decoration-2 underline-offset-4 ${focoClaro}`}>
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
 
         <Boton type="submit" cargando={enviando} className="mt-5 min-h-13 w-full">
           Entrar

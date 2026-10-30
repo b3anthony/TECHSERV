@@ -12,7 +12,7 @@ public interface OrdenHistorialRepository extends JpaRepository<OrdenHistorial, 
     List<OrdenHistorial> findByOrdenIdOrderByOcurridoEnAsc(Long ordenId);
 
     @Query(value = """
-           SELECT CAST(AVG(EXTRACT(EPOCH FROM (h.ocurrido_en - os.creada_en)) / 3600.0) AS double precision)
+           SELECT CAST(AVG(TIMESTAMPDIFF(MICROSECOND, os.creada_en, h.ocurrido_en) / 3.6e9) AS DOUBLE)
            FROM orden_historial h
            JOIN orden_servicio os ON os.id = h.orden_id
            WHERE os.mype_id = :mypeId

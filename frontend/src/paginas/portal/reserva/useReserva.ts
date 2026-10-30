@@ -13,11 +13,10 @@ import type {
   TallerItem,
 } from '../tiposPortal.ts'
 import { hoyString } from '../fechas.ts'
+import { datosFotos, prepararFotos } from '../fotos.ts'
 import { DISTRITOS_TRUJILLO } from '../distritos.ts'
 
 const CLAVE_BORRADOR = 'techserv.reserva_borrador'
-const MAX_FOTOS = 5
-const MAX_BYTES_FOTO = 5 * 1024 * 1024 // 5 MB
 
 interface BorradorReserva {
   mypeId?: number
@@ -299,32 +298,8 @@ export function useReserva() {
 
   // 5. Manejo de fotos
   function agregarArchivos(archivos: FileList | File[]) {
-    setErrorFotos(null)
-    const archivosArray = Array.from(archivos)
-
-    if (fotos.length + archivosArray.length > MAX_FOTOS) {
-      setErrorFotos(`Puedes adjuntar como máximo ${MAX_FOTOS} fotos en total.`)
-      return
-    }
-
-    const nuevas: FotoCargada[] = []
-    for (const archivo of archivosArray) {
-      if (archivo.size > MAX_BYTES_FOTO) {
-        setErrorFotos(`El archivo "${archivo.name}" supera el tamaño máximo permitido de 5 MB.`)
-        continue
-      }
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) {
-        setErrorFotos(`Solo se admiten fotos en formato JPG, PNG o WEBP.`)
-        continue
-      }
-      nuevas.push({
-        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        archivo,
-        nombre: archivo.name,
-        urlVistaPrevia: URL.createObjectURL(archivo),
-      })
-    }
-
+    const { nuevas, error } = prepararFotos(archivos, fotos.length)
+    setErrorFotos(error)
     if (nuevas.length > 0) {
       setFotos((prev) => [...prev, ...nuevas])
     }
@@ -474,11 +449,7 @@ export function useReserva() {
 
       // Subir fotos si las hay
       if (fotos.length > 0) {
-        const formData = new FormData()
-        for (const f of fotos) {
-          formData.append('fotos', f.archivo)
-          formData.append('archivos', f.archivo)
-        }
+        const formData = datosFotos(fotos)
         try {
           await api.post(`/mis-ordenes/${ordenCreada.id}/fotos`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },

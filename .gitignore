@@ -35,3 +35,15 @@ disenio/maquetas-*/_logs/
 
 # laboratorio de diseño (maquetas, fotos, capturas de los brazos)
 disenio/
+
+# copia de la base PostgreSQL anterior (datos de desarrollo: no sube)
+respaldo-postgres/
+
+# trabajo nuestro, no lo necesita el equipo para ejecutar el proyecto
+scripts/
+docs/*.sql
+INFORME/
+fotos/
+edt*.png
+edtt.jpeg
+que falta

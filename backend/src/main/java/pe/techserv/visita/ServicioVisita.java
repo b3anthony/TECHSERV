@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import pe.techserv.almacen.ServicioAlmacenamiento;
 import pe.techserv.comun.ConflictoEstado;
 import pe.techserv.comun.SolicitudInvalida;
+import pe.techserv.diagnostico.ServicioDiagnosticoIa;
 import pe.techserv.mype.MypeEspecialidad;
 import pe.techserv.mype.MypeEspecialidadRepository;
 import pe.techserv.mype.RepuestoRepository;
@@ -26,13 +27,21 @@ import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.PasoHistorial;
 import pe.techserv.pago.PagoRepository;
 import pe.techserv.panel.ServicioCierre;
+import pe.techserv.panel.ServicioDatosCobro;
 import pe.techserv.panel.dto.CierreOrden;
 import pe.techserv.panel.dto.DetallePago;
 import pe.techserv.panel.dto.RegistroPago;
 import pe.techserv.visita.dto.AccionVisita;
 import pe.techserv.visita.dto.VistaVisita;
+import pe.techserv.garantia.ServicioGarantia;
+import pe.techserv.garantia.dto.GarantiaVisita;
+import pe.techserv.orden.TipoOrden;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
+import java.util.Map;
+import java.math.BigDecimal;
 
 /**
  * Lo que el tecnico puede hacer desde su pagina, y nada mas.
@@ -60,6 +69,17 @@ public class ServicioVisita {
     private final ServicioCierre cierre;
     private final ServicioAlmacenamiento almacen;
     private final EntityManager em;
+    private final ServicioDiagnosticoIa diagnosticos;
+    private final ServicioGarantia garantias;
+    private final ServicioDatosCobro datosCobro;
+
+    /**
+     * Mientras la guia de la IA le sirve al tecnico: para prepararse e ir. Ya
+     * dentro del domicilio (en proceso, que en su pagina es "Terminado") no se
+     * manda: ahi toca cerrar la visita.
+     */
+    private static final Set<EstadoOrden> CON_GUIA =
+            EnumSet.of(EstadoOrden.ASIGNADA, EstadoOrden.CONFIRMADA, EstadoOrden.EN_CAMINO);
 
     public ServicioVisita(ServicioEnlaces enlaces,
                           OrdenServicioRepository ordenes,
@@ -70,7 +90,11 @@ public class ServicioVisita {
                           MypeEspecialidadRepository tarifas,
                           ServicioCierre cierre,
                           ServicioAlmacenamiento almacen,
-                          EntityManager em) {
+                          EntityManager em,
+                          ServicioDiagnosticoIa diagnosticos, ServicioGarantia garantias,
+                          ServicioDatosCobro datosCobro) {
+        this.diagnosticos = diagnosticos;
+        this.datosCobro = datosCobro;
         this.enlaces = enlaces;
         this.ordenes = ordenes;
         this.historial = historial;
@@ -81,6 +105,7 @@ public class ServicioVisita {
         this.cierre = cierre;
         this.almacen = almacen;
         this.em = em;
+        this.garantias = garantias;
     }
 
     @Transactional(readOnly = true)
@@ -219,6 +244,7 @@ public class ServicioVisita {
         Long mypeId = o.getMype().getId();
         boolean porCerrar = o.getEstado() == EstadoOrden.EN_PROCESO;
         DetallePago pago = pagos.findByOrdenId(o.getId()).map(DetallePago::de).orElse(null);
+        Map<Long, Integer> cubiertos = porCerrar ? garantias.cantidadesCubiertas(o) : Map.of();
 
         return new VistaVisita(
                 o.getCodigo(), o.getEstado(), o.getEstado().getEtiqueta(),
@@ -239,15 +265,24 @@ public class ServicioVisita {
                                 r.getPrecioUnitario(), r.subtotal()))
                         .toList(),
                 pago,
-                tarifas.findByMypeIdAndEspecialidad(mypeId, o.getEspecialidad())
+                o.getTipo() == TipoOrden.GARANTIA ? BigDecimal.ZERO : tarifas.findByMypeIdAndEspecialidad(mypeId, o.getEspecialidad())
                         .map(MypeEspecialidad::getTarifaBase).orElse(null),
                 porCerrar
                         ? repuestos.findByMypeIdAndActivoTrueOrderByNombreAsc(mypeId).stream()
-                                .map(VistaVisita.RepuestoDisponible::de).toList()
+                                .map(r -> VistaVisita.RepuestoDisponible.de(r, cubiertos.getOrDefault(r.getId(), 0))).toList()
                         : List.of(),
                 o.getMype().getMetodosPago().stream().sorted().toList(),
                 o.getMetodoPago(),
-                o.getHistorial().stream().map(PasoHistorial::de).toList());
+                o.getHistorial().stream().map(PasoHistorial::de).toList(),
+                CON_GUIA.contains(o.getEstado()) ? diagnosticos.guiaParaTecnico(mypeId, o.getId()) : null,
+                GarantiaVisita.de(garantias.antecedenteTaller(o)),
+                // El paso de cobrar: cerrada con total y sin pago. Calificar antes de
+                // pagar no saca la visita de ese paso (registrarPago la acepta igual).
+                (o.getEstado() == EstadoOrden.COMPLETADA || o.getEstado() == EstadoOrden.CALIFICADA)
+                        && o.getTotal() != null && pago == null
+                        ? datosCobro.paraVisita(mypeId, o.getMetodoPago() == null
+                                ? o.getMype().getMetodosPago() : List.of(o.getMetodoPago()))
+                        : null);
     }
 
     private static String nombre(Tecnico t) {

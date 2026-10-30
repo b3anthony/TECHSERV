@@ -6,6 +6,9 @@ import pe.techserv.orden.OrdenServicio;
 import pe.techserv.orden.OrigenFoto;
 import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.PasoHistorial;
+import pe.techserv.orden.TipoOrden;
+import pe.techserv.garantia.dto.GarantiaResumen;
+import pe.techserv.garantia.dto.AntecedenteGarantia;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -22,9 +25,17 @@ public record Seguimiento(String codigo,
                           List<PasoHistorial> pasos,
                           boolean puedeCancelar,
                           boolean puedeCalificar,
-                          List<String> fotosTrabajo) {
+                          List<String> fotosTrabajo,
+                          TipoOrden tipo,
+                          GarantiaResumen garantia,
+                          AntecedenteGarantia atencionGarantia) {
 
     public static Seguimiento de(OrdenServicio orden, boolean tieneCalificacion) {
+        return de(orden, tieneCalificacion, null, null);
+    }
+
+    public static Seguimiento de(OrdenServicio orden, boolean tieneCalificacion,
+                                  GarantiaResumen garantia, AntecedenteGarantia antecedente) {
         boolean puedeCancelar = orden.getEstado().permite(EstadoOrden.CANCELADA);
         boolean puedeCalificar = orden.getEstado() == EstadoOrden.COMPLETADA && !tieneCalificacion;
         List<PasoHistorial> pasos = orden.getHistorial().stream()
@@ -46,7 +57,8 @@ public record Seguimiento(String codigo,
                 pasos,
                 puedeCancelar,
                 puedeCalificar,
-                OrdenDetalle.rutas(orden, OrigenFoto.TECNICO)
+                OrdenDetalle.rutas(orden, OrigenFoto.TECNICO),
+                orden.getTipo(), garantia, antecedente
         );
     }
 }

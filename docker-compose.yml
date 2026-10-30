@@ -1,21 +1,30 @@
 # Servicios de apoyo del prototipo. Ni uno solo sale de esta máquina.
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: techserv-db
+  mysql:
+    image: mysql:8.4
+    container_name: techserv-mysql
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-techserv}
-      POSTGRES_USER: ${POSTGRES_USER:-techserv}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techserv_local}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-techserv}
+      MYSQL_USER: ${MYSQL_USER:-techserv}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-techserv_local}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-techserv_root}
+      # Hora de Lima en la sesión por defecto: NOW() y CURRENT_DATE dicen lo
+      # mismo que el backend. El backend además la fija en cada conexión.
+      TZ: America/Lima
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_as_cs
+      - --default-time-zone=America/Lima
     ports:
-      - "55432:5432"   # 55432 y no 5432, para no chocar con un PostgreSQL ya instalado en la máquina
+      - "33306:3306"   # 33306 y no 3306, para no chocar con un MySQL ya instalado en la máquina
     volumes:
-      - techserv_db:/var/lib/postgresql/data
+      - techserv_mysql:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-techserv} -d ${POSTGRES_DB:-techserv}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
+      start_period: 20s
 
   # Bandeja de correo de mentira: recibe todo y no reenvía nada.
   # Interfaz web en http://localhost:8025
@@ -31,4 +40,4 @@ services:
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
 volumes:
-  techserv_db:
+  techserv_mysql:

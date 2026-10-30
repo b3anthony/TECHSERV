@@ -1,5 +1,5 @@
-import type { Especialidad, EstadoOrden, PasoHistorial } from '../../tipos.ts'
-import type { DetallePagoRespuesta, MetodoPago } from '../panel/tiposPanel.ts'
+import type { Especialidad, EstadoOrden, PasoHistorial, ReparacionGarantia } from '../../tipos.ts'
+import type { DetallePagoRespuesta, FuenteEquipo, MetodoPago, ProbabilidadFalla } from '../panel/tiposPanel.ts'
 
 /** Lo que devuelve /api/visita/{token}: la orden vista por el técnico. */
 export interface VistaVisita {
@@ -35,6 +35,27 @@ export interface VistaVisita {
   /** Cómo dijo el cliente que pagaría: si lo eligió, es el único que se puede marcar. */
   metodoPagoCliente?: MetodoPago | null
   historial: PasoHistorial[]
+  /** Lo que la IA sugiere llevar y revisar. Solo mientras dura la visita. */
+  guiaIa?: GuiaTecnico | null
+  garantia: ReparacionGarantia | null
+  /** Solo al cobrar: los datos configurados de los métodos que puede usar el cliente. */
+  datosCobro: DatosCobroVisita | null
+}
+
+export interface DatosCobroVisita {
+  yape?: { numero: string | null; qr: string | null }
+  plin?: { numero: string | null; qr: string | null }
+  transferencia?: { banco: string; titular: string; numeroCuenta: string | null; cci: string | null }
+}
+
+/** Coincide con GuiaTecnico.java: el diagnóstico de la IA, resumido para el técnico. */
+export interface GuiaTecnico {
+  equipo?: { tipo?: string; marca?: string; modelo?: string; fuente: FuenteEquipo }
+  repuestos: { nombre: string; sinStock: boolean }[]
+  herramientas: string[]
+  quizaFalten: string[]
+  revisar: { falla: string; probabilidad: ProbabilidadFalla; queHacer?: string }[]
+  precauciones: string[]
 }
 
 export interface RepuestoDisponible {
@@ -42,4 +63,6 @@ export interface RepuestoDisponible {
   nombre: string
   precio: number
   stock: number
+  /** Unidades cubiertas por la reparación original; 0 en una visita normal. */
+  cantidadCubierta: number
 }

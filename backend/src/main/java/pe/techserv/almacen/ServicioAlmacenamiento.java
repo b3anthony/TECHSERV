@@ -51,12 +51,40 @@ public class ServicioAlmacenamiento {
      *         por ejemplo {@code /uploads/ORD-0143/8f3c....jpg}
      */
     public String guardar(String codigoOrden, MultipartFile archivo) {
+        return guardarEnCarpeta(codigoOrden, archivo);
+    }
+
+    /** Reutiliza los mismos tipos y límite de las fotos, sin asociar el QR a una orden. */
+    public String guardarCobro(Long mypeId, MultipartFile archivo) {
+        return guardarEnCarpeta("cobro-" + mypeId, archivo);
+    }
+
+    /** Solo borra archivos de cobro de este taller, nunca fotos ni rutas ajenas. */
+    public void eliminarCobro(Long mypeId, String rutaPublica) {
+        if (rutaPublica == null) return;
+        String prefijo = "/uploads/cobro-" + mypeId + "/";
+        if (!rutaPublica.startsWith(prefijo)) {
+            throw new SolicitudInvalida("Ruta del QR no válida");
+        }
+        Path carpeta = raiz.resolve("cobro-" + mypeId).normalize();
+        Path archivo = carpeta.resolve(rutaPublica.substring(prefijo.length())).normalize();
+        if (!carpeta.equals(archivo.getParent())) {
+            throw new SolicitudInvalida("Ruta del QR no válida");
+        }
+        try {
+            Files.deleteIfExists(archivo);
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudo borrar el QR", e);
+        }
+    }
+
+    private String guardarEnCarpeta(String nombreCarpeta, MultipartFile archivo) {
         validar(archivo);
 
         String extension = extensionDe(archivo.getContentType());
         String nombre = UUID.randomUUID() + extension;
 
-        Path carpeta = raiz.resolve(codigoOrden).normalize();
+        Path carpeta = raiz.resolve(nombreCarpeta).normalize();
         if (!carpeta.startsWith(raiz)) {
             throw new SolicitudInvalida("Ruta de subida no válida");
         }
@@ -69,7 +97,7 @@ public class ServicioAlmacenamiento {
             throw new UncheckedIOException("No se pudo guardar la foto", e);
         }
 
-        return "/uploads/" + codigoOrden + "/" + nombre;
+        return "/uploads/" + nombreCarpeta + "/" + nombre;
     }
 
     private void validar(MultipartFile archivo) {

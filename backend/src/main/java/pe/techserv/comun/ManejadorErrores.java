@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
@@ -49,6 +50,15 @@ public class ManejadorErrores {
         return ResponseEntity.badRequest()
                 .body(ErrorApi.deCampos("Revisa los datos del formulario",
                                         req.getRequestURI(), campos));
+    }
+
+    /** Un parámetro de la URL que no se puede leer (?estado=FOO, ?desde=ayer): es culpa de la petición, no un 500. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorApi> parametroInvalido(MethodArgumentTypeMismatchException e,
+                                                      HttpServletRequest req) {
+        return ResponseEntity.badRequest()
+                .body(ErrorApi.de(400, "El parámetro «" + e.getName() + "» no es válido",
+                                  req.getRequestURI()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

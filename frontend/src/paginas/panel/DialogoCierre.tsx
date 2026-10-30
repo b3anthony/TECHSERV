@@ -8,6 +8,7 @@ import { AreaTexto } from '../../componentes/publico/AreaTexto.tsx'
 import { Aviso } from '../../componentes/publico/Aviso.tsx'
 import { Boton } from '../../componentes/publico/Boton.tsx'
 import { CampoTexto } from '../../componentes/publico/CampoTexto.tsx'
+import type { ReparacionGarantia } from '../../tipos.ts'
 import { DialogoPanel, EsqueletoLista } from './comun.tsx'
 import { botonIcono, soles } from './formato.ts'
 import type { RepuestoCatalogo } from './tiposPanel.ts'
@@ -24,6 +25,8 @@ interface DialogoCierreProps {
   abierto: boolean
   alCerrar: () => void
   alCierreExitoso: () => void
+  garantia?: boolean
+  repuestosCubiertos?: ReparacionGarantia['repuestosInstalados']
 }
 
 export function DialogoCierre({
@@ -32,6 +35,8 @@ export function DialogoCierre({
   abierto,
   alCerrar,
   alCierreExitoso,
+  garantia = false,
+  repuestosCubiertos = [],
 }: DialogoCierreProps): JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [diagnostico, setDiagnostico] = useState('')
@@ -89,12 +94,16 @@ export function DialogoCierre({
     )
   }
 
-  const manoObraNum = parseFloat(precioManoObra) || 0
-  const subtotalRepuestos = repuestosFilas.reduce((acc, f) => {
-    if (!f.repuestoId) return acc
-    const rep = catalogoRepuestos.find((r) => r.id === f.repuestoId)
-    return acc + (rep ? Number(rep.precio) * f.cantidad : 0)
-  }, 0)
+  const manoObraNum = garantia ? 0 : parseFloat(precioManoObra) || 0
+  const cantidadCubierta = (repuestoId: number) => garantia ? repuestosCubiertos.filter((r) => r.repuestoId === repuestoId).reduce((suma, r) => suma + r.cantidad, 0) : 0
+  function subtotalFila(fila: FilaRepuesto, indice: number): number {
+    const rep = catalogoRepuestos.find((r) => r.id === fila.repuestoId)
+    if (!rep) return 0
+    const usadasAntes = repuestosFilas.slice(0, indice).filter((f) => f.repuestoId === fila.repuestoId).reduce((suma, f) => suma + f.cantidad, 0)
+    const cubiertasRestantes = Math.max(0, cantidadCubierta(rep.id) - usadasAntes)
+    return Number(rep.precio) * Math.max(0, fila.cantidad - cubiertasRestantes)
+  }
+  const subtotalRepuestos = repuestosFilas.reduce((acc, f, indice) => acc + subtotalFila(f, indice), 0)
   const totalCalculado = (manoObraNum + subtotalRepuestos).toFixed(2)
 
   const errorMostrar = errorGeneral || (errorRepuestos ? mensajeDeError(errorRepuestos) : null)
@@ -104,7 +113,7 @@ export function DialogoCierre({
     if (!diagnostico.trim()) {
       nuevosErrores.diagnostico = 'El diagnóstico es obligatorio'
     }
-    if (precioManoObra.trim() === '' || isNaN(manoObraNum) || manoObraNum < 0) {
+    if (!garantia && (precioManoObra.trim() === '' || isNaN(manoObraNum) || manoObraNum < 0)) {
       nuevosErrores.precioManoObra = 'Ingresa un precio de mano de obra válido (mayor o igual a 0)'
     }
 
@@ -159,7 +168,7 @@ export function DialogoCierre({
       ocupado={cerrando}
       ancho="xl"
       titulo="Cerrar la orden"
-      detalle={<><span className="font-bold text-publico-tinta">{codigoOrden}</span> · anota qué se hizo y cuánto se cobra.</>}
+      detalle={<><span className="font-bold text-publico-tinta">{codigoOrden}</span> · {garantia ? 'Atención por garantía: sin cobro de visita ni mano de obra' : 'anota qué se hizo y cuánto se cobra.'}</>}
       pie={
         <>
           <Boton type="button" variante="secundario" disabled={cerrando} onClick={() => dialogRef.current?.close()}>Cancelar</Boton>
@@ -187,7 +196,9 @@ export function DialogoCierre({
         step="0.50"
         min="0"
         inputMode="decimal"
-        value={precioManoObra}
+        value={garantia ? '0' : precioManoObra}
+        readOnly={garantia}
+        ayuda={garantia ? 'La mano de obra está cubierta por la garantía de la reparación original.' : undefined}
         onChange={(e) => setPrecioManoObra(e.target.value)}
         placeholder="0.00"
         required
@@ -217,7 +228,7 @@ export function DialogoCierre({
             {repuestosFilas.map((fila, index) => {
               const repSeleccionado = catalogoRepuestos.find((r) => r.id === fila.repuestoId)
               const errorFila = errores[`repuesto_${fila.idTemp}`]
-              const subtotalFila = repSeleccionado ? Number(repSeleccionado.precio) * fila.cantidad : 0
+              const importeFila = subtotalFila(fila, index)
 
               return (
                 <li key={fila.idTemp} className="rounded-xl border border-publico-linea bg-publico-lienzo p-3">
@@ -257,11 +268,12 @@ export function DialogoCierre({
                         className={campoFila}
                       />
                     </div>
-                    <p className="pb-2.5 text-right text-sm font-bold tabular-nums">{soles(subtotalFila)}</p>
+                    <p className="pb-2.5 text-right text-sm font-bold tabular-nums">{soles(importeFila)}</p>
                     <button type="button" onClick={() => eliminarFila(fila.idTemp)} aria-label={`Quitar el repuesto ${index + 1}`} className={`${botonIcono} hover:text-publico-peligro`}>
                       <Icono nombre="cerrar" className="size-5" />
                     </button>
                   </div>
+                  {repSeleccionado && cantidadCubierta(repSeleccionado.id) > 0 && <p className="mt-2 text-xs text-publico-chip-texto">La garantía cubre hasta {cantidadCubierta(repSeleccionado.id)} unidades entre todas las filas de este repuesto; el exceso se cobra al precio del catálogo.</p>}
                   {errorFila && <p role="alert" className="mt-1.5 text-xs font-bold text-publico-peligro">{errorFila}</p>}
                 </li>
               )

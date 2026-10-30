@@ -13,6 +13,7 @@ import pe.techserv.reserva.dto.NuevaCalificacion;
 import pe.techserv.reserva.dto.NuevaReserva;
 import pe.techserv.reserva.dto.Seguimiento;
 import pe.techserv.seguridad.UsuarioAutenticado;
+import pe.techserv.garantia.dto.NuevaAtencionGarantia;
 
 import java.util.List;
 
@@ -38,6 +39,14 @@ public class ControladorMisOrdenes {
             @Valid @RequestBody NuevaReserva datos) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(reservas.reservar(usuario.clienteIdObligatorio(), datos));
+    }
+
+    @PostMapping("/{id}/garantia")
+    public ResponseEntity<OrdenDetalle> garantia(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                                @PathVariable Long id,
+                                                @Valid @RequestBody NuevaAtencionGarantia datos) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(reservas.reclamarGarantia(usuario.clienteIdObligatorio(), id, datos));
     }
 
     /** Las fotos van aparte para poder subirlas con barra de progreso. */

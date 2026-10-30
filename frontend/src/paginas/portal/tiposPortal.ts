@@ -1,4 +1,4 @@
-import type { Especialidad, EstadoOrden, PasoHistorial } from '../../tipos.ts'
+import type { AtencionGarantia, Especialidad, EstadoOrden, GarantiaOrden, PasoHistorial, TipoOrden } from '../../tipos.ts'
 import type { MetodoPago } from '../panel/tiposPanel.ts'
 
 export interface EspecialidadItem {
@@ -47,6 +47,9 @@ export interface NuevaReservaPayload {
 
 export interface SeguimientoDatos {
   codigo: string
+  tipo: TipoOrden
+  garantia: GarantiaOrden | null
+  atencionGarantia: AtencionGarantia | null
   estado: EstadoOrden
   etiquetaEstado: string
   tallerNombre: string

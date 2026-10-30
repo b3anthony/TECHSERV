@@ -76,6 +76,14 @@ public class OrdenServicio {
     @Column(nullable = false, length = 20)
     private EstadoOrden estado = EstadoOrden.PENDIENTE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TipoOrden tipo = TipoOrden.NORMAL;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "garantia_de_id")
+    private OrdenServicio garantiaDe;
+
     /** Cómo dijo el cliente que pagaría. NULL en las órdenes de antes de poder elegirlo. */
     @Enumerated(EnumType.STRING)
     @Column(name = "metodo_pago", length = 20)
@@ -151,6 +159,10 @@ public class OrdenServicio {
     public void setHoraProgramada(LocalTime horaProgramada) { this.horaProgramada = horaProgramada; }
     public EstadoOrden getEstado() { return estado; }
     public void setEstado(EstadoOrden estado) { this.estado = estado; }
+    public TipoOrden getTipo() { return tipo; }
+    public void setTipo(TipoOrden tipo) { this.tipo = tipo; }
+    public OrdenServicio getGarantiaDe() { return garantiaDe; }
+    public void setGarantiaDe(OrdenServicio garantiaDe) { this.garantiaDe = garantiaDe; }
     public MetodoPago getMetodoPago() { return metodoPago; }
     public void setMetodoPago(MetodoPago metodoPago) { this.metodoPago = metodoPago; }
     public String getDiagnostico() { return diagnostico; }

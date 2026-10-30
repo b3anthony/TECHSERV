@@ -10,12 +10,14 @@
 -- peticion contra orden_servicio.tecnico_id y usuario.activo.
 
 CREATE TABLE enlace_tecnico (
-    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id         BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
     hash_token VARCHAR(64) NOT NULL UNIQUE,
-    orden_id   BIGINT      NOT NULL REFERENCES orden_servicio (id) ON DELETE CASCADE,
-    tecnico_id BIGINT      NOT NULL REFERENCES tecnico (id) ON DELETE CASCADE,
-    expira_en  TIMESTAMPTZ NOT NULL,
-    creado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
+    orden_id   BIGINT      NOT NULL,
+    tecnico_id BIGINT      NOT NULL,
+    expira_en  DATETIME(6) NOT NULL,
+    creado_en  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT enlace_orden   FOREIGN KEY (orden_id)   REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    CONSTRAINT enlace_tecnico FOREIGN KEY (tecnico_id) REFERENCES tecnico (id)        ON DELETE CASCADE
 );
 
 CREATE INDEX idx_enlace_tecnico_orden ON enlace_tecnico (orden_id);
@@ -27,4 +29,6 @@ ALTER TABLE orden_foto
 
 -- Quien tuvo el dinero en la mano. NULL = lo registro el taller desde el panel.
 ALTER TABLE pago
-    ADD COLUMN cobrado_por_tecnico_id BIGINT REFERENCES tecnico (id) ON DELETE SET NULL;
+    ADD COLUMN cobrado_por_tecnico_id BIGINT,
+    ADD CONSTRAINT pago_cobrado_por_tecnico FOREIGN KEY (cobrado_por_tecnico_id)
+        REFERENCES tecnico (id) ON DELETE SET NULL;

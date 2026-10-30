@@ -1,12 +1,13 @@
 package pe.techserv.orden;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -16,7 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import pe.techserv.comun.Especialidad;
 
-public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Long> {
+public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Long>,
+                                                 JpaSpecificationExecutor<OrdenServicio> {
 
     Optional<OrdenServicio> findByCodigo(String codigo);
 
@@ -37,15 +39,19 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
     @Query("SELECT os FROM OrdenServicio os WHERE os.id = :id AND os.mype.id = :mypeId")
     Optional<OrdenServicio> bloquear(@Param("id") Long id, @Param("mypeId") Long mypeId);
 
-    Page<OrdenServicio> findByMypeIdOrderByFechaProgramadaDescHoraProgramadaDesc(
-            Long mypeId, Pageable pagina);
-
-    Page<OrdenServicio> findByMypeIdAndEstadoOrderByFechaProgramadaDescHoraProgramadaDesc(
-            Long mypeId, EstadoOrden estado, Pageable pagina);
-
     List<OrdenServicio> findByClienteIdOrderByCreadaEnDesc(Long clienteId);
 
     Optional<OrdenServicio> findByIdAndClienteId(Long id, Long clienteId);
+
+    @Query("""
+           SELECT os FROM OrdenServicio os
+           WHERE os.garantiaDe.id = :originalId AND os.mype.id = :mypeId
+             AND os.cliente.id = :clienteId AND os.estado NOT IN :cerradas
+           """)
+    Optional<OrdenServicio> atencionGarantiaAbierta(@Param("originalId") Long originalId,
+                                                  @Param("mypeId") Long mypeId,
+                                                  @Param("clienteId") Long clienteId,
+                                                  @Param("cerradas") Collection<EstadoOrden> cerradas);
 
     /** Cuantas ordenes vivas tiene el taller en esa franja: es su aforo ocupado. */
     @Query("""
@@ -84,13 +90,27 @@ public interface OrdenServicioRepository extends JpaRepository<OrdenServicio, Lo
     long completadasHoy(@Param("mypeId") Long mypeId);
 
     /**
-     * El siguiente correlativo, sacado de una secuencia de Postgres.
+     * El siguiente correlativo, sacado de la tabla orden_codigo_seq (V3), que en
+     * MySQL hace de secuencia.
      *
      * No es un "max(codigo) + 1": dos clientes reservando a la vez leerian el
-     * mismo maximo y uno se estrellaria contra el UNIQUE. nextval() es atomico.
+     * mismo maximo y uno se estrellaria contra el UNIQUE. AUTO_INCREMENT es
+     * atomico, y LAST_INSERT_ID() es de la conexion: otra reserva en paralelo no
+     * lo pisa. Las dos consultas van en la misma transaccion para que usen la
+     * misma conexion.
      */
-    @Query(value = "SELECT nextval('orden_codigo_seq')", nativeQuery = true)
-    long siguienteCorrelativo();
+    @Transactional
+    default long siguienteCorrelativo() {
+        reservarCorrelativo();
+        return ultimoCorrelativo();
+    }
+
+    @Modifying
+    @Query(value = "INSERT INTO orden_codigo_seq () VALUES ()", nativeQuery = true)
+    void reservarCorrelativo();
+
+    @Query(value = "SELECT LAST_INSERT_ID()", nativeQuery = true)
+    long ultimoCorrelativo();
 
     /**
      * Solo los ids. Quien los pide los recorre con {@link #bloquear}: asi cada

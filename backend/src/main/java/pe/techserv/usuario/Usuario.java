@@ -24,6 +24,9 @@ public class Usuario {
     @Column(name = "clave_hash", nullable = false, length = 100)
     private String claveHash;
 
+    @Column(name = "clave_cambiada_en")
+    private OffsetDateTime claveCambiadaEn;
+
     @Column(length = 20)
     private String telefono;
 
@@ -51,6 +54,8 @@ public class Usuario {
     public void setEmail(String email) { this.email = email; }
     public String getClaveHash() { return claveHash; }
     public void setClaveHash(String claveHash) { this.claveHash = claveHash; }
+    public OffsetDateTime getClaveCambiadaEn() { return claveCambiadaEn; }
+    public void setClaveCambiadaEn(OffsetDateTime claveCambiadaEn) { this.claveCambiadaEn = claveCambiadaEn; }
     public String getTelefono() { return telefono; }
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public Rol getRol() { return rol; }

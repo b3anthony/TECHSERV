@@ -7,11 +7,13 @@ import type { Reserva } from './useReserva.ts'
 function fechaLocal(valor: string): Date { return new Date(`${valor}T12:00:00`) }
 function fechaIso(valor: Date): string { return `${valor.getFullYear()}-${String(valor.getMonth() + 1).padStart(2, '0')}-${String(valor.getDate()).padStart(2, '0')}` }
 
-export function PasoDiaHora({ reserva }: { reserva: Reserva }): ReactNode {
+type SeleccionDiaHora = Pick<Reserva, 'fecha' | 'inicioTira' | 'elegirFecha' | 'agenda' | 'cargandoAgenda' | 'errorAgenda' | 'horaSeleccionada' | 'setHoraSeleccionada' | 'errores' | 'pasosCompletos'>
+
+export function PasoDiaHora({ reserva, numero = 3 }: { reserva: SeleccionDiaHora; numero?: number }): ReactNode {
   const { fecha, inicioTira, elegirFecha, agenda, cargandoAgenda, errorAgenda, horaSeleccionada, setHoraSeleccionada, errores, pasosCompletos } = reserva
   const hoy = hoyString()
   const dias = Array.from({ length: 7 }, (_, indice) => { const dia = fechaLocal(inicioTira); dia.setDate(dia.getDate() + indice); return dia })
-  return <PasoNumerado id="paso-dia-hora" numero={3} titulo="Día y hora" bajada="Escoge una franja disponible para la visita." completo={pasosCompletos[2]}>
+  return <PasoNumerado id="paso-dia-hora" numero={numero} titulo="Día y hora" bajada="Escoge una franja disponible para la visita." completo={pasosCompletos[2]}>
     <fieldset>
       <legend className="mb-2 text-sm font-bold text-publico-tinta-media">Elige un día</legend>
       <div className="grid grid-cols-4 gap-2 min-[680px]:grid-cols-7" aria-label="Siete días disponibles">

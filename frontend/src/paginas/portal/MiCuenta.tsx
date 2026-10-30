@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -15,6 +15,7 @@ import { Tarjeta } from '../../componentes/publico/Tarjeta.tsx'
 import { useEnvio } from '../../componentes/publico/useEnvio.ts'
 import { useSesion } from '../../sesion/SesionProvider.tsx'
 import { DISTRITOS_TRUJILLO } from './distritos.ts'
+import type { ConfirmacionCuentaEliminada } from '../CuentaEliminada.tsx'
 
 /** Coincide con CuentaCliente.java. Los campos vacíos no llegan. */
 interface CuentaCliente {
@@ -62,7 +63,7 @@ export function MiCuenta(): ReactNode {
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <SeccionDatos datos={cuenta.data} />
           <SeccionClave />
-          <SeccionDesactivar />
+          <SeccionDesactivar email={cuenta.data.email} />
         </div>
       )}
     </div>
@@ -190,9 +191,7 @@ function SeccionClave(): ReactNode {
 
 /* ─── Desactivar cuenta ─── */
 
-const FECHA_LARGA = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
-
-function SeccionDesactivar(): ReactNode {
+function SeccionDesactivar({ email }: { email: string }): ReactNode {
   const navigate = useNavigate()
   const { olvidarSesion } = useSesion()
   const { enviando, mensaje, errores, enviar } = useEnvio()
@@ -202,19 +201,20 @@ function SeccionDesactivar(): ReactNode {
   async function desactivar(ev: FormEvent): Promise<void> {
     ev.preventDefault()
     if (!clave) return
-    let hasta = ''
+    let reactivableHasta = ''
     const ok = await enviar(async () => {
       const r = await api.post<{ reactivableHasta: string }>('/mi-cuenta/desactivar', { clave })
-      hasta = FECHA_LARGA.format(new Date(r.data.reactivableHasta))
+      reactivableHasta = r.data.reactivableHasta
     }, 'Tu cuenta quedó desactivada.')
     if (!ok) return
-    // El servidor ya cerró la sesión: se borra aquí y se lleva a «Iniciar sesión»,
-    // que es justo por donde se recupera.
-    navigate('/entrar', {
-      replace: true,
-      state: { aviso: `Tu cuenta quedó desactivada. Si cambias de idea, inicia sesión antes del ${hasta} y la recuperas.` },
+    // La ruta y la sesión cambian juntas para que RutaProtegida no redirija a /entrar.
+    startTransition(() => {
+      navigate('/cuenta-eliminada', {
+        replace: true,
+        state: { tipo: 'cliente', email, reactivableHasta } satisfies ConfirmacionCuentaEliminada,
+      })
+      olvidarSesion()
     })
-    olvidarSesion()
   }
 
   function cancelar(): void {

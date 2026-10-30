@@ -11,7 +11,7 @@ import java.time.LocalTime;
  * tramo es un dia cerrado.
  *
  * El dia va como numero ISO (1 = lunes ... 7 = domingo), el mismo que
- * {@link DayOfWeek#getValue()}: asi la consulta a mano en psql y el codigo
+ * {@link DayOfWeek#getValue()}: asi la consulta a mano en la base y el codigo
  * hablan igual.
  */
 @Embeddable

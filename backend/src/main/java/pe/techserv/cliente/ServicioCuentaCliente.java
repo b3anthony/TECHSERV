@@ -2,6 +2,7 @@ package pe.techserv.cliente;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +13,7 @@ import pe.techserv.cliente.dto.DesactivarCuenta;
 import pe.techserv.comun.ConflictoEstado;
 import pe.techserv.comun.RecursoNoEncontrado;
 import pe.techserv.comun.SolicitudInvalida;
+import pe.techserv.notificacion.AvisoCuenta;
 import pe.techserv.orden.*;
 import pe.techserv.panel.dto.CambioClave;
 import pe.techserv.seguridad.UsuarioAutenticado;
@@ -50,13 +52,16 @@ public class ServicioCuentaCliente {
     private final OrdenServicioRepository ordenes;
     private final OrdenHistorialRepository historial;
     private final PasswordEncoder claves;
+    private final ApplicationEventPublisher avisos;
 
     public ServicioCuentaCliente(ClienteRepository clientes, OrdenServicioRepository ordenes,
-                                 OrdenHistorialRepository historial, PasswordEncoder claves) {
+                                 OrdenHistorialRepository historial, PasswordEncoder claves,
+                                 ApplicationEventPublisher avisos) {
         this.clientes = clientes;
         this.ordenes = ordenes;
         this.historial = historial;
         this.claves = claves;
+        this.avisos = avisos;
     }
 
     @Transactional(readOnly = true)
@@ -127,7 +132,17 @@ public class ServicioCuentaCliente {
         OffsetDateTime ahora = OffsetDateTime.now();
         u.setActivo(false);
         c.setDesactivadaEn(ahora);
-        return new CuentaDesactivada(ahora.plusDays(DIAS_PARA_REACTIVAR));
+        OffsetDateTime hasta = ahora.plusDays(DIAS_PARA_REACTIVAR);
+        avisos.publishEvent(new AvisoCuenta.ClienteDesactivado(u.getEmail(), u.getNombreCompleto(), hasta));
+        return new CuentaDesactivada(hasta);
+    }
+
+    /** Permite recuperar la contraseña sin reactivar ni recuperar datos eliminados. */
+    @Transactional(readOnly = true)
+    public boolean puedeEntrar(Usuario u) {
+        return clientes.findByUsuarioId(u.getId())
+                .filter(c -> c.getEliminadaEn() == null)
+                .map(c -> u.isActivo() || reactivable(c)).orElse(false);
     }
 
     /**
@@ -141,9 +156,7 @@ public class ServicioCuentaCliente {
             return false;
         }
         Cliente c = encontrado.get();
-        boolean aTiempo = c.getDesactivadaEn() != null && c.getEliminadaEn() == null
-                && c.getDesactivadaEn().plusDays(DIAS_PARA_REACTIVAR).isAfter(OffsetDateTime.now());
-        if (!aTiempo) {
+        if (!reactivable(c)) {
             return false;
         }
         u.setActivo(true);
@@ -163,6 +176,7 @@ public class ServicioCuentaCliente {
                 ahora.minusDays(DIAS_PARA_REACTIVAR));
         for (Cliente c : vencidas) {
             Usuario u = c.getUsuario();
+            avisos.publishEvent(new AvisoCuenta.ClienteEliminado(u.getEmail(), u.getNombreCompleto()));
             u.setActivo(false);
             u.setNombres("Cliente");
             u.setApellidos("eliminado");
@@ -181,6 +195,11 @@ public class ServicioCuentaCliente {
                      vencidas.size(), DIAS_PARA_REACTIVAR);
         }
         return vencidas.size();
+    }
+
+    private boolean reactivable(Cliente c) {
+        return c.getDesactivadaEn() != null && c.getEliminadaEn() == null
+                && c.getDesactivadaEn().plusDays(DIAS_PARA_REACTIVAR).isAfter(OffsetDateTime.now());
     }
 
     private Cliente cliente(UsuarioAutenticado quien) {

@@ -45,6 +45,21 @@ public class ServicioPrincipal {
                        .map(this::construir);
     }
 
+    /**
+     * La sesión vale si su sello de contraseña coincide con el de la fila: tras
+     * restablecer la clave, toda sesión emitida con la clave anterior cae. Un
+     * token sin sello (de antes de existir) solo vale si la clave nunca se
+     * restableció.
+     */
+    @Transactional(readOnly = true)
+    public Optional<UsuarioAutenticado> porSesion(Long usuarioId, Number sello) {
+        long recibido = sello == null ? 0L : sello.longValue();
+        return usuarios.findById(usuarioId)
+                .filter(Usuario::isActivo)
+                .filter(u -> ServicioJwt.selloClave(u) == recibido)
+                .map(this::construir);
+    }
+
     @Transactional(readOnly = true)
     public Optional<UsuarioAutenticado> porEmail(String email) {
         return usuarios.findByEmailIgnoreCase(email)

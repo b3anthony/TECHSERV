@@ -11,6 +11,31 @@ export type Especialidad =
 
 export type ActorHistorial = 'CLIENTE' | 'ADMIN_MYPE' | 'TECNICO' | 'SISTEMA'
 
+export type TipoOrden = 'NORMAL' | 'GARANTIA'
+
+/** Cobertura emitida: los días permanecen como estaban al cerrar la reparación. */
+export interface GarantiaOrden {
+  venceEn: string
+  vigente: boolean
+  dias: number
+  repuestos: { nombre: string; cantidad: number }[]
+  atencionAbierta: { id: number; codigo: string } | null
+}
+
+/** Solo contiene los antecedentes de la reparación original enlazada. */
+export interface ReparacionGarantia {
+  codigoOriginal: string
+  fechaReparacion: string
+  venceEn: string
+  diagnosticoAnterior: string | null
+  repuestosInstalados: { nombre: string; cantidad: number; repuestoId?: number }[]
+  fotosAnteriores: string[]
+}
+
+export interface AtencionGarantia extends ReparacionGarantia {
+  ordenOriginalId: number
+}
+
 export interface UsuarioActual {
   id: number
   nombreCompleto: string
@@ -46,7 +71,10 @@ export interface ErrorApi {
 /** Coincide con OrdenResumen.java del backend */
 export interface OrdenResumen {
   id: number
+  mypeId: number
   codigo: string
+  tipo: TipoOrden
+  garantia: GarantiaOrden | null
   estado: EstadoOrden
   etiquetaEstado: string
   especialidad: Especialidad
@@ -66,7 +94,11 @@ export interface OrdenResumen {
 /** Coincide con OrdenDetalle.java del backend */
 export interface OrdenDetalle {
   id: number
+  mypeId: number
   codigo: string
+  tipo: TipoOrden
+  garantia: GarantiaOrden | null
+  atencionGarantia: AtencionGarantia | null
   estado: EstadoOrden
   etiquetaEstado: string
   especialidad: Especialidad

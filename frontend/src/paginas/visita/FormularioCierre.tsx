@@ -8,7 +8,7 @@ import { Aviso } from '../../componentes/publico/Aviso.tsx'
 import { Boton } from '../../componentes/publico/Boton.tsx'
 import { CampoTexto } from '../../componentes/publico/CampoTexto.tsx'
 import { soles } from '../panel/formato.ts'
-import type { VistaVisita } from './tiposVisita.ts'
+import type { RepuestoDisponible, VistaVisita } from './tiposVisita.ts'
 
 interface FormularioCierreProps {
   token: string
@@ -21,17 +21,19 @@ interface FormularioCierreProps {
  * se usaron. El total se ve en vivo, grande, porque es lo que va a cobrar.
  */
 export function FormularioCierre({ token, visita, alTerminar }: FormularioCierreProps): ReactNode {
+  const garantia = visita.garantia != null
   const [diagnostico, setDiagnostico] = useState('')
-  const [manoObra, setManoObra] = useState(visita.tarifaSugerida != null ? String(visita.tarifaSugerida) : '')
+  const [manoObra, setManoObra] = useState(garantia ? '0' : visita.tarifaSugerida != null ? String(visita.tarifaSugerida) : '')
   const [cantidades, setCantidades] = useState<Record<number, number>>({})
   const [buscar, setBuscar] = useState('')
   const [errores, setErrores] = useState<{ diagnostico?: string; manoObra?: string }>({})
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
-  const manoObraNum = Number(manoObra)
+  const manoObraNum = garantia ? 0 : Number(manoObra)
   const usados = visita.catalogo.filter((r) => (cantidades[r.id] ?? 0) > 0)
-  const totalRepuestos = usados.reduce((s, r) => s + r.precio * (cantidades[r.id] ?? 0), 0)
+  const subtotalRepuesto = (r: RepuestoDisponible) => r.precio * Math.max(0, (cantidades[r.id] ?? 0) - (garantia ? r.cantidadCubierta : 0))
+  const totalRepuestos = usados.reduce((s, r) => s + subtotalRepuesto(r), 0)
   const total = (Number.isFinite(manoObraNum) && manoObra.trim() !== '' ? manoObraNum : 0) + totalRepuestos
   const filtro = buscar.trim().toLowerCase()
   const visibles = visita.catalogo.filter((r) => r.nombre.toLowerCase().includes(filtro))
@@ -47,7 +49,7 @@ export function FormularioCierre({ token, visita, alTerminar }: FormularioCierre
     ev.preventDefault()
     const e: typeof errores = {}
     if (!diagnostico.trim()) e.diagnostico = 'Cuenta en una frase qué hiciste'
-    if (manoObra.trim() === '' || !Number.isFinite(manoObraNum) || manoObraNum < 0) e.manoObra = 'Escribe cuánto es la mano de obra'
+    if (!garantia && (manoObra.trim() === '' || !Number.isFinite(manoObraNum) || manoObraNum < 0)) e.manoObra = 'Escribe cuánto es la mano de obra'
     setErrores(e)
     setError(null)
     if (Object.keys(e).length > 0) return
@@ -70,7 +72,7 @@ export function FormularioCierre({ token, visita, alTerminar }: FormularioCierre
   return (
     <form noValidate onSubmit={enviar} aria-labelledby="titulo-cierre" className="grid">
       <h2 id="titulo-cierre" className="text-xl font-bold">¿Terminaste? Cierra el trabajo</h2>
-      <p className="mt-1 mb-5 text-sm text-publico-tinta-media">Con esto se calcula lo que le cobras al cliente.</p>
+      <p className="mt-1 mb-5 text-sm text-publico-tinta-media">{garantia ? 'Atención por garantía: sin cobro de visita ni mano de obra' : 'Con esto se calcula lo que le cobras al cliente.'}</p>
 
       {error && <Aviso tipo="error" className="mb-4">{error}</Aviso>}
 
@@ -92,15 +94,17 @@ export function FormularioCierre({ token, visita, alTerminar }: FormularioCierre
         inputMode="decimal"
         min="0"
         step="0.50"
-        value={manoObra}
+        value={garantia ? '0' : manoObra}
+        readOnly={garantia}
         onChange={(e) => setManoObra(e.target.value)}
         error={errores.manoObra}
-        ayuda={visita.tarifaSugerida != null ? `La tarifa del taller para este servicio es ${soles(visita.tarifaSugerida)}.` : undefined}
+        ayuda={garantia ? 'La mano de obra está cubierta por la garantía de la reparación original.' : visita.tarifaSugerida != null ? `La tarifa del taller para este servicio es ${soles(visita.tarifaSugerida)}.` : undefined}
       />
 
       <fieldset className="mb-5">
         <legend className="mb-1 text-sm font-bold">¿Usaste repuestos?</legend>
         <p className="mb-3 text-sm text-publico-tinta-media">Toca + en cada uno que pusiste. Si no usaste ninguno, déjalo así.</p>
+        {usados.length > 0 && <p className="mb-3 text-sm text-publico-tinta-media">Sube una foto del repuesto instalado: queda guardada en la garantía del cliente.</p>}
         {visita.catalogo.length === 0 ? (
           <p className="rounded-xl bg-publico-lienzo px-4 py-3 text-sm text-publico-tinta-media">El taller no tiene repuestos en su catálogo.</p>
         ) : (
@@ -121,6 +125,7 @@ export function FormularioCierre({ token, visita, alTerminar }: FormularioCierre
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold">{r.nombre}</p>
                       <p className="text-xs text-publico-tinta-media">{soles(r.precio)} · {agotado ? 'sin stock' : `quedan ${r.stock}`}</p>
+                      {garantia && r.cantidadCubierta > 0 && <p className="mt-1 text-xs font-bold text-publico-chip-texto">Hasta {r.cantidadCubierta} {r.cantidadCubierta === 1 ? 'unidad cubierta' : 'unidades cubiertas'}; el exceso se cobra.</p>}
                     </div>
                     <div role="group" aria-label={`Cantidad de ${r.nombre}`} className="flex items-center gap-1">
                       <button type="button" onClick={() => cambiar(r.id, -1, r.stock)} disabled={n === 0} className={`grid size-11 place-items-center rounded-lg border border-publico-linea-fuerte bg-publico-superficie disabled:opacity-40 ${focoClaro}`}>
@@ -144,7 +149,7 @@ export function FormularioCierre({ token, visita, alTerminar }: FormularioCierre
         <dl className="grid gap-1.5 text-sm">
           <div className="flex justify-between gap-3"><dt className="text-publico-superficie/70">Mano de obra</dt><dd className="tabular-nums">{soles(Number.isFinite(manoObraNum) ? manoObraNum : 0)}</dd></div>
           {usados.map((r) => (
-            <div key={r.id} className="flex justify-between gap-3"><dt className="min-w-0 truncate text-publico-superficie/70">{cantidades[r.id]} × {r.nombre}</dt><dd className="tabular-nums">{soles(r.precio * (cantidades[r.id] ?? 0))}</dd></div>
+            <div key={r.id} className="flex justify-between gap-3"><dt className="min-w-0 text-publico-superficie/70">{cantidades[r.id]} × {r.nombre}{garantia && r.cantidadCubierta > 0 && <span className="block text-xs">{Math.min(cantidades[r.id] ?? 0, r.cantidadCubierta)} sin cobro por garantía</span>}</dt><dd className="shrink-0 tabular-nums">{soles(subtotalRepuesto(r))}</dd></div>
           ))}
           <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-publico-superficie/15 pt-3">
             <dt className="font-bold">Total a cobrar</dt>
@@ -154,7 +159,7 @@ export function FormularioCierre({ token, visita, alTerminar }: FormularioCierre
       </div>
 
       <Boton type="submit" cargando={enviando} className="mt-4 min-h-14 w-full text-base">
-        <Icono nombre="check" className="size-5" /> Terminar trabajo por {soles(total)}
+        <Icono nombre="check" className="size-5" /> {garantia && total === 0 ? 'Terminar trabajo sin cobro' : `Terminar trabajo por ${soles(total)}`}
       </Boton>
     </form>
   )

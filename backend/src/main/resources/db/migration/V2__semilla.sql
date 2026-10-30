@@ -64,34 +64,34 @@ WHERE (u.email, m.ruc) IN (
 
 INSERT INTO tecnico (usuario_id, mype_id, disponible)
 SELECT u.id, m.id, t.disp FROM usuario u, mype m, (VALUES
-  ('luis.ramirez@serviciosdelgado.pe', '20601234567', TRUE),
-  ('ana.quispe@serviciosdelgado.pe',   '20601234567', FALSE),
-  ('carlos.nunez@serviciosdelgado.pe', '20601234567', TRUE),
-  ('pedro.salazar@tecnohogar.pe',      '20609876543', TRUE),
-  ('marta.ibanez@reparacionesll.pe',   '20605554443', TRUE)
+  ROW('luis.ramirez@serviciosdelgado.pe', '20601234567', TRUE),
+  ROW('ana.quispe@serviciosdelgado.pe',   '20601234567', FALSE),
+  ROW('carlos.nunez@serviciosdelgado.pe', '20601234567', TRUE),
+  ROW('pedro.salazar@tecnohogar.pe',      '20609876543', TRUE),
+  ROW('marta.ibanez@reparacionesll.pe',   '20605554443', TRUE)
 ) AS t(correo, ruc, disp)
 WHERE u.email = t.correo AND m.ruc = t.ruc;
 
 INSERT INTO tecnico_especialidad (tecnico_id, especialidad)
 SELECT t.id, e.esp FROM tecnico t JOIN usuario u ON u.id = t.usuario_id, (VALUES
-  ('luis.ramirez@serviciosdelgado.pe', 'REPARACION_ELECTRODOMESTICOS'),
-  ('luis.ramirez@serviciosdelgado.pe', 'SERVICIOS_HOGAR'),
-  ('ana.quispe@serviciosdelgado.pe',   'SERVICIOS_HOGAR'),
-  ('ana.quispe@serviciosdelgado.pe',   'SOPORTE_INFORMATICO'),
-  ('carlos.nunez@serviciosdelgado.pe', 'SOPORTE_INFORMATICO'),
-  ('pedro.salazar@tecnohogar.pe',      'SERVICIOS_HOGAR'),
-  ('pedro.salazar@tecnohogar.pe',      'REPARACION_ELECTRODOMESTICOS'),
-  ('marta.ibanez@reparacionesll.pe',   'REPARACION_ELECTRODOMESTICOS')
+  ROW('luis.ramirez@serviciosdelgado.pe', 'REPARACION_ELECTRODOMESTICOS'),
+  ROW('luis.ramirez@serviciosdelgado.pe', 'SERVICIOS_HOGAR'),
+  ROW('ana.quispe@serviciosdelgado.pe',   'SERVICIOS_HOGAR'),
+  ROW('ana.quispe@serviciosdelgado.pe',   'SOPORTE_INFORMATICO'),
+  ROW('carlos.nunez@serviciosdelgado.pe', 'SOPORTE_INFORMATICO'),
+  ROW('pedro.salazar@tecnohogar.pe',      'SERVICIOS_HOGAR'),
+  ROW('pedro.salazar@tecnohogar.pe',      'REPARACION_ELECTRODOMESTICOS'),
+  ROW('marta.ibanez@reparacionesll.pe',   'REPARACION_ELECTRODOMESTICOS')
 ) AS e(correo, esp)
 WHERE u.email = e.correo;
 
 INSERT INTO cliente (usuario_id, direccion, referencia, distrito, latitud, longitud)
 SELECT u.id, c.dir, c.ref, 'Trujillo', c.lat, c.lon FROM usuario u, (VALUES
-  ('rosa.chavez@correo.pe',        'Urb. Primavera, Mz. C Lt. 14', 'Frente al parque',           -8.1155000, -79.0330000),
-  ('miguel.aranda@correo.pe',      'Av. América Sur 3145',         'Edificio azul, dpto. 402',   -8.1180000, -79.0250000),
-  ('elena.rodriguez@correo.pe',    'Urb. San Andrés, Etapa 3',     'Portón negro',               -8.1215000, -79.0395000),
-  ('contacto@farmaciabolivar.pe',  'Jr. Bolívar 460',              'Local comercial en esquina', -8.1110000, -79.0285000),
-  ('javier.osorio@correo.pe',      'Urb. El Golf, Mz. D Lt. 22',   'Casa de dos pisos',          -8.1290000, -79.0430000)
+  ROW('rosa.chavez@correo.pe',        'Urb. Primavera, Mz. C Lt. 14', 'Frente al parque',           -8.1155000, -79.0330000),
+  ROW('miguel.aranda@correo.pe',      'Av. América Sur 3145',         'Edificio azul, dpto. 402',   -8.1180000, -79.0250000),
+  ROW('elena.rodriguez@correo.pe',    'Urb. San Andrés, Etapa 3',     'Portón negro',               -8.1215000, -79.0395000),
+  ROW('contacto@farmaciabolivar.pe',  'Jr. Bolívar 460',              'Local comercial en esquina', -8.1110000, -79.0285000),
+  ROW('javier.osorio@correo.pe',      'Urb. El Golf, Mz. D Lt. 22',   'Casa de dos pisos',          -8.1290000, -79.0430000)
 ) AS c(correo, dir, ref, lat, lon)
 WHERE u.email = c.correo;
 
@@ -99,17 +99,17 @@ WHERE u.email = c.correo;
 
 INSERT INTO repuesto (mype_id, nombre, descripcion, precio, stock)
 SELECT m.id, r.nombre, r.descripcion, r.precio, r.stock FROM mype m, (VALUES
-  ('20601234567', 'Rodaje de lavadora 6205',   'Rodaje sellado para tambor de lavadora',       45.00, 12),
-  ('20601234567', 'Faja de lavadora',          'Faja de transmisión, medida estándar',         28.00, 20),
-  ('20601234567', 'Termostato de refrigeradora','Termostato universal de repuesto',            55.00,  8),
-  ('20601234567', 'Interruptor termomagnético','Llave térmica de 20 A para tablero',           35.00, 15),
-  ('20601234567', 'Capacitor de aire acondicionado', 'Capacitor de arranque 35 uF',            60.00,  6),
-  ('20601234567', 'Pasta térmica',             'Pasta disipadora para procesador',             18.00, 25),
-  ('20609876543', 'Bomba de desagüe',          'Bomba de desagüe para lavadora',               75.00,  5),
-  ('20609876543', 'Faja de lavadora',          'Faja de transmisión, medida estándar',         28.00, 14),
-  ('20609876543', 'Fuente de poder 500 W',     'Fuente ATX de repuesto',                      130.00,  4),
-  ('20605554443', 'Resistencia de secadora',   'Resistencia calefactora de secadora',          85.00,  3),
-  ('20605554443', 'Llave de paso 1/2',         'Llave de paso de bronce para gasfitería',      22.00, 30)
+  ROW('20601234567', 'Rodaje de lavadora 6205',   'Rodaje sellado para tambor de lavadora',       45.00, 12),
+  ROW('20601234567', 'Faja de lavadora',          'Faja de transmisión, medida estándar',         28.00, 20),
+  ROW('20601234567', 'Termostato de refrigeradora','Termostato universal de repuesto',            55.00,  8),
+  ROW('20601234567', 'Interruptor termomagnético','Llave térmica de 20 A para tablero',           35.00, 15),
+  ROW('20601234567', 'Capacitor de aire acondicionado', 'Capacitor de arranque 35 uF',            60.00,  6),
+  ROW('20601234567', 'Pasta térmica',             'Pasta disipadora para procesador',             18.00, 25),
+  ROW('20609876543', 'Bomba de desagüe',          'Bomba de desagüe para lavadora',               75.00,  5),
+  ROW('20609876543', 'Faja de lavadora',          'Faja de transmisión, medida estándar',         28.00, 14),
+  ROW('20609876543', 'Fuente de poder 500 W',     'Fuente ATX de repuesto',                      130.00,  4),
+  ROW('20605554443', 'Resistencia de secadora',   'Resistencia calefactora de secadora',          85.00,  3),
+  ROW('20605554443', 'Llave de paso 1/2',         'Llave de paso de bronce para gasfitería',      22.00, 30)
 ) AS r(ruc, nombre, descripcion, precio, stock)
 WHERE m.ruc = r.ruc;
 
@@ -126,50 +126,50 @@ INSERT INTO orden_servicio (
     precio_mano_obra, total, creada_en, actualizada_en)
 SELECT o.codigo, c.id, m.id, tec.id, o.especialidad, o.falla,
        o.direccion, o.referencia, 'Trujillo', c.latitud, c.longitud,
-       CURRENT_DATE + o.dias, o.hora::time, o.estado, o.diagnostico,
+       DATE_ADD(CURRENT_DATE, INTERVAL o.dias DAY), CAST(o.hora AS TIME), o.estado, o.diagnostico,
        o.mano_obra, o.total,
-       now() - (o.horas_creada || ' hours')::interval,
-       now() - (o.horas_creada || ' hours')::interval + interval '1 hour'
+       NOW(6) - INTERVAL o.horas_creada HOUR,
+       NOW(6) - INTERVAL o.horas_creada HOUR + INTERVAL 1 HOUR
 FROM (VALUES
- ('ORD-0142','rosa.chavez@correo.pe',        '20601234567', NULL,
+ ROW('ORD-0142','rosa.chavez@correo.pe',        '20601234567', NULL,
   'REPARACION_ELECTRODOMESTICOS','La lavadora no centrifuga y bota agua por abajo',
   'Urb. Primavera, Mz. C Lt. 14','Frente al parque',  0,'14:30','PENDIENTE',NULL,NULL,NULL,3),
- ('ORD-0141','miguel.aranda@correo.pe',      '20601234567', NULL,
+ ROW('ORD-0141','miguel.aranda@correo.pe',      '20601234567', NULL,
   'SOPORTE_INFORMATICO','No enciende la laptop, huele a quemado',
   'Av. América Sur 3145','Edificio azul, dpto. 402',  0,'16:00','PENDIENTE',NULL,NULL,NULL,2),
- ('ORD-0140','miguel.aranda@correo.pe',      '20601234567', 'carlos.nunez@serviciosdelgado.pe',
+ ROW('ORD-0140','miguel.aranda@correo.pe',      '20601234567', 'carlos.nunez@serviciosdelgado.pe',
   'SOPORTE_INFORMATICO','La computadora de la oficina se reinicia sola cada media hora',
   'Av. América Sur 3145','Edificio azul, dpto. 402',  1,'11:00','CONFIRMADA',NULL,NULL,NULL,22),
- ('ORD-0139','elena.rodriguez@correo.pe',    '20601234567', 'luis.ramirez@serviciosdelgado.pe',
+ ROW('ORD-0139','elena.rodriguez@correo.pe',    '20601234567', 'luis.ramirez@serviciosdelgado.pe',
   'SERVICIOS_HOGAR','Tablero eléctrico hace corto al conectar la ducha',
   'Urb. San Andrés, Etapa 3','Portón negro',          1,'09:00','ASIGNADA',NULL,NULL,NULL,20),
- ('ORD-0138','contacto@farmaciabolivar.pe',  '20601234567', 'ana.quispe@serviciosdelgado.pe',
+ ROW('ORD-0138','contacto@farmaciabolivar.pe',  '20601234567', 'ana.quispe@serviciosdelgado.pe',
   'SERVICIOS_HOGAR','Aire acondicionado no enfría, gotea adentro',
   'Jr. Bolívar 460','Local comercial en esquina',     0,'11:00','EN_CAMINO',NULL,NULL,NULL,26),
- ('ORD-0137','rosa.chavez@correo.pe',        '20601234567', 'ana.quispe@serviciosdelgado.pe',
+ ROW('ORD-0137','rosa.chavez@correo.pe',        '20601234567', 'ana.quispe@serviciosdelgado.pe',
   'REPARACION_ELECTRODOMESTICOS','La refrigeradora no enfría en la parte de abajo',
   'Urb. Primavera, Mz. C Lt. 14','Frente al parque',  0,'09:00','EN_PROCESO',
   'Termostato en mal estado, se está reemplazando',NULL,NULL,30),
- ('ORD-0136','javier.osorio@correo.pe',      '20601234567', 'luis.ramirez@serviciosdelgado.pe',
+ ROW('ORD-0136','javier.osorio@correo.pe',      '20601234567', 'luis.ramirez@serviciosdelgado.pe',
   'SERVICIOS_HOGAR','Se dispara la llave térmica cada vez que encienden la ducha',
   'Urb. El Golf, Mz. D Lt. 22','Casa de dos pisos',  -1,'10:00','COMPLETADA',
   'Llave térmica de 20 A quemada, se reemplazó y se reajustó el tablero',65.00,100.00,50),
- ('ORD-0135','javier.osorio@correo.pe',      '20601234567', 'luis.ramirez@serviciosdelgado.pe',
+ ROW('ORD-0135','javier.osorio@correo.pe',      '20601234567', 'luis.ramirez@serviciosdelgado.pe',
   'REPARACION_ELECTRODOMESTICOS','La secadora hace un ruido muy fuerte al girar',
   'Urb. El Golf, Mz. D Lt. 22','Casa de dos pisos',  -1,'15:20','CALIFICADA',
   'Rodaje del tambor desgastado, se reemplazó',60.00,105.00,54),
- ('ORD-0134','elena.rodriguez@correo.pe',    '20601234567', NULL,
+ ROW('ORD-0134','elena.rodriguez@correo.pe',    '20601234567', NULL,
   'SOPORTE_INFORMATICO','Instalación de cuatro cámaras de seguridad en el patio',
   'Urb. San Andrés, Etapa 3','Portón negro',         -2,'16:00','CANCELADA',NULL,NULL,NULL,72),
- ('ORD-0133','rosa.chavez@correo.pe',        '20609876543', 'pedro.salazar@tecnohogar.pe',
+ ROW('ORD-0133','rosa.chavez@correo.pe',        '20609876543', 'pedro.salazar@tecnohogar.pe',
   'REPARACION_ELECTRODOMESTICOS','La lavadora hace ruido fuerte al centrifugar',
   'Urb. Primavera, Mz. C Lt. 14','Frente al parque', -4,'10:00','CALIFICADA',
   'Faja de transmisión floja, se reemplazó',55.00,83.00,100),
- ('ORD-0132','miguel.aranda@correo.pe',      '20609876543', 'pedro.salazar@tecnohogar.pe',
+ ROW('ORD-0132','miguel.aranda@correo.pe',      '20609876543', 'pedro.salazar@tecnohogar.pe',
   'SERVICIOS_HOGAR','No sale agua caliente en la ducha',
   'Av. América Sur 3145','Edificio azul, dpto. 402', -6,'09:00','CALIFICADA',
   'Resistencia de la terma sulfatada, se limpió el contacto',58.00,58.00,150),
- ('ORD-0131','javier.osorio@correo.pe',      '20605554443', 'marta.ibanez@reparacionesll.pe',
+ ROW('ORD-0131','javier.osorio@correo.pe',      '20605554443', 'marta.ibanez@reparacionesll.pe',
   'REPARACION_ELECTRODOMESTICOS','La secadora ya no calienta, solo da vueltas',
   'Urb. El Golf, Mz. D Lt. 22','Casa de dos pisos', -7,'14:00','CALIFICADA',
   'Resistencia calefactora quemada, se reemplazó',45.00,130.00,180)
@@ -179,17 +179,18 @@ JOIN mype m ON m.ruc = o.ruc
 JOIN usuario uc ON uc.email = o.correo_cliente
 JOIN cliente c ON c.usuario_id = uc.id
 LEFT JOIN (SELECT t.id, u.email FROM tecnico t JOIN usuario u ON u.id = t.usuario_id) AS tec
-       ON tec.email = o.correo_tecnico;
+       ON tec.email = o.correo_tecnico
+ORDER BY o.codigo DESC;
 
 -- ── repuestos usados en las ordenes ya cerradas ──
 
 INSERT INTO orden_repuesto (orden_id, repuesto_id, cantidad, precio_unitario)
 SELECT os.id, r.id, x.cantidad, r.precio
 FROM (VALUES
-  ('ORD-0136', 'Interruptor termomagnético', 1),
-  ('ORD-0135', 'Rodaje de lavadora 6205',    1),
-  ('ORD-0133', 'Faja de lavadora',           1),
-  ('ORD-0131', 'Resistencia de secadora',    1)
+  ROW('ORD-0136', 'Interruptor termomagnético', 1),
+  ROW('ORD-0135', 'Rodaje de lavadora 6205',    1),
+  ROW('ORD-0133', 'Faja de lavadora',           1),
+  ROW('ORD-0131', 'Resistencia de secadora',    1)
 ) AS x(codigo, repuesto, cantidad)
 JOIN orden_servicio os ON os.codigo = x.codigo
 JOIN repuesto r ON r.nombre = x.repuesto AND r.mype_id = os.mype_id;
@@ -197,25 +198,25 @@ JOIN repuesto r ON r.nombre = x.repuesto AND r.mype_id = os.mype_id;
 -- ── calificaciones de las ordenes cerradas ──
 
 INSERT INTO calificacion (orden_id, puntaje, comentario, creada_en)
-SELECT os.id, x.puntaje, x.comentario, os.actualizada_en + interval '2 hours'
+SELECT os.id, x.puntaje, x.comentario, os.actualizada_en + INTERVAL 2 HOUR
 FROM (VALUES
-  ('ORD-0135', 5, 'Llegó a la hora acordada y dejó todo limpio. Muy recomendable.'),
-  ('ORD-0133', 5, 'Rápidos y el precio fue el que me dijeron desde el inicio.'),
-  ('ORD-0132', 4, 'Buen trabajo, aunque llegaron veinte minutos tarde.'),
-  ('ORD-0131', 5, 'Explicó bien qué estaba fallando antes de cambiar la pieza.')
+  ROW('ORD-0135', 5, 'Llegó a la hora acordada y dejó todo limpio. Muy recomendable.'),
+  ROW('ORD-0133', 5, 'Rápidos y el precio fue el que me dijeron desde el inicio.'),
+  ROW('ORD-0132', 4, 'Buen trabajo, aunque llegaron veinte minutos tarde.'),
+  ROW('ORD-0131', 5, 'Explicó bien qué estaba fallando antes de cambiar la pieza.')
 ) AS x(codigo, puntaje, comentario)
 JOIN orden_servicio os ON os.codigo = x.codigo;
 
 -- ── pagos (simulados: efectivo, Yape o Plin, que es lo que se usa aqui) ──
 
 INSERT INTO pago (orden_id, metodo, monto, estado, pagado_en)
-SELECT os.id, x.metodo, os.total, 'PAGADO', os.actualizada_en + interval '30 minutes'
+SELECT os.id, x.metodo, os.total, 'PAGADO', os.actualizada_en + INTERVAL 30 MINUTE
 FROM (VALUES
-  ('ORD-0136', 'EFECTIVO'),
-  ('ORD-0135', 'YAPE'),
-  ('ORD-0133', 'EFECTIVO'),
-  ('ORD-0132', 'PLIN'),
-  ('ORD-0131', 'EFECTIVO')
+  ROW('ORD-0136', 'EFECTIVO'),
+  ROW('ORD-0135', 'YAPE'),
+  ROW('ORD-0133', 'EFECTIVO'),
+  ROW('ORD-0132', 'PLIN'),
+  ROW('ORD-0131', 'EFECTIVO')
 ) AS x(codigo, metodo)
 JOIN orden_servicio os ON os.codigo = x.codigo;
 
@@ -233,24 +234,24 @@ SELECT os.id,
        f.nota,
        -- cada paso separado por un rato distinto en cada orden, para que los
        -- tiempos del informe no salgan todos iguales
-       os.creada_en + ((f.paso - 1) * (25 + (os.id % 7) * 11) || ' minutes')::interval
+       os.creada_en + INTERVAL ((f.paso - 1) * (25 + (os.id % 7) * 11)) MINUTE
 FROM orden_servicio os
 JOIN (VALUES
-  ('PENDIENTE', 1, 'CLIENTE',    'El cliente registró la solicitud'),
-  ('ASIGNADA',  2, 'ADMIN_MYPE', 'Se asignó un técnico y se le envió el correo'),
-  ('CONFIRMADA',3, 'TECNICO',    'El técnico confirmó la recepción desde el correo'),
-  ('EN_CAMINO', 4, 'TECNICO',    'El técnico salió hacia el domicilio'),
-  ('EN_PROCESO',5, 'TECNICO',    'El técnico llegó y empezó el diagnóstico'),
-  ('COMPLETADA',6, 'TECNICO',    'Trabajo terminado'),
-  ('CALIFICADA',7, 'CLIENTE',    'El cliente calificó el servicio')
+  ROW('PENDIENTE', 1, 'CLIENTE',    'El cliente registró la solicitud'),
+  ROW('ASIGNADA',  2, 'ADMIN_MYPE', 'Se asignó un técnico y se le envió el correo'),
+  ROW('CONFIRMADA',3, 'TECNICO',    'El técnico confirmó la recepción desde el correo'),
+  ROW('EN_CAMINO', 4, 'TECNICO',    'El técnico salió hacia el domicilio'),
+  ROW('EN_PROCESO',5, 'TECNICO',    'El técnico llegó y empezó el diagnóstico'),
+  ROW('COMPLETADA',6, 'TECNICO',    'Trabajo terminado'),
+  ROW('CALIFICADA',7, 'CLIENTE',    'El cliente calificó el servicio')
 ) AS f(estado, paso, actor, nota) ON TRUE
 LEFT JOIN (VALUES
-  ('ASIGNADA','PENDIENTE'), ('CONFIRMADA','ASIGNADA'), ('EN_CAMINO','CONFIRMADA'),
-  ('EN_PROCESO','EN_CAMINO'), ('COMPLETADA','EN_PROCESO'), ('CALIFICADA','COMPLETADA')
+  ROW('ASIGNADA','PENDIENTE'), ROW('CONFIRMADA','ASIGNADA'), ROW('EN_CAMINO','CONFIRMADA'),
+  ROW('EN_PROCESO','EN_CAMINO'), ROW('COMPLETADA','EN_PROCESO'), ROW('CALIFICADA','COMPLETADA')
 ) AS ant(hasta, estado) ON ant.hasta = f.estado
 JOIN (VALUES
-  ('PENDIENTE',1),('ASIGNADA',2),('CONFIRMADA',3),('EN_CAMINO',4),
-  ('EN_PROCESO',5),('COMPLETADA',6),('CALIFICADA',7)
+  ROW('PENDIENTE',1),ROW('ASIGNADA',2),ROW('CONFIRMADA',3),ROW('EN_CAMINO',4),
+  ROW('EN_PROCESO',5),ROW('COMPLETADA',6),ROW('CALIFICADA',7)
 ) AS actual(estado, paso) ON actual.estado = os.estado
 WHERE os.codigo LIKE 'ORD-01%'
   AND f.paso <= actual.paso;
@@ -262,7 +263,7 @@ FROM orden_servicio os WHERE os.codigo = 'ORD-0134'
 UNION ALL
 SELECT os.id, 'PENDIENTE', 'CANCELADA', 'CLIENTE',
        'El cliente canceló: consiguió el servicio por otro medio',
-       os.creada_en + interval '4 hours'
+       os.creada_en + INTERVAL 4 HOUR
 FROM orden_servicio os WHERE os.codigo = 'ORD-0134';
 
 -- ─────────────────── historico, para que los informes digan algo ───────────────
@@ -274,7 +275,16 @@ FROM orden_servicio os WHERE os.codigo = 'ORD-0134';
 -- El puntaje sigue un patron fijo (no aleatorio) para que la demo se pueda
 -- reproducir: umbral 1 => uno de cada cinco es 4 y el resto 5.
 
-WITH tec_num AS (
+INSERT INTO orden_servicio (
+    codigo, cliente_id, mype_id, tecnico_id, especialidad, descripcion_falla,
+    direccion, referencia, distrito, latitud, longitud,
+    fecha_programada, hora_programada, estado, diagnostico,
+    precio_mano_obra, total, creada_en, actualizada_en)
+WITH RECURSIVE
+-- 1..125: el lote mas grande. MySQL no tiene generate_series.
+g (i) AS (
+    SELECT 1 UNION ALL SELECT i + 1 FROM g WHERE i < 125),
+tec_num AS (
     SELECT t.id, t.mype_id,
            (row_number() OVER (PARTITION BY t.mype_id ORDER BY t.id) - 1) AS n,
            count(*)     OVER (PARTITION BY t.mype_id)                     AS cuantos
@@ -289,57 +299,54 @@ esp_num AS (
            (row_number() OVER (PARTITION BY me.mype_id ORDER BY me.especialidad) - 1) AS n,
            count(*)     OVER (PARTITION BY me.mype_id)                                AS cuantas
     FROM mype_especialidad me)
-INSERT INTO orden_servicio (
-    codigo, cliente_id, mype_id, tecnico_id, especialidad, descripcion_falla,
-    direccion, referencia, distrito, latitud, longitud,
-    fecha_programada, hora_programada, estado, diagnostico,
-    precio_mano_obra, total, creada_en, actualizada_en)
 SELECT
-    'ORD-H' || substr(m.ruc, 8, 4) || '-' || lpad(g.i::text, 4, '0'),
+    CONCAT('ORD-H', SUBSTR(m.ruc, 8, 4), '-', LPAD(g.i, 4, '0')),
     cn.id, m.id, tn.id, en.especialidad,
     CASE en.especialidad
-      WHEN 'REPARACION_ELECTRODOMESTICOS' THEN (ARRAY[
+      WHEN 'REPARACION_ELECTRODOMESTICOS' THEN ELT(1 + g.i % 6,
         'La lavadora no centrifuga',
         'La refrigeradora no enfría',
         'La secadora no calienta',
         'La lavadora bota agua por debajo',
         'El microondas no calienta',
-        'La refrigeradora hace mucho ruido'])[1 + g.i % 6]
-      WHEN 'SERVICIOS_HOGAR' THEN (ARRAY[
+        'La refrigeradora hace mucho ruido')
+      WHEN 'SERVICIOS_HOGAR' THEN ELT(1 + g.i % 6,
         'Fuga de agua debajo del lavadero',
         'Se dispara la llave térmica',
         'El aire acondicionado no enfría',
         'No sale agua caliente en la ducha',
         'Tomacorriente sin corriente',
-        'Atoro en el desagüe del baño'])[1 + g.i % 6]
-      ELSE (ARRAY[
+        'Atoro en el desagüe del baño')
+      ELSE ELT(1 + g.i % 6,
         'La laptop no enciende',
         'La computadora se reinicia sola',
         'Instalación de cámaras de seguridad',
         'La laptop se calienta y se apaga',
         'No hay imagen en el monitor',
-        'Mantenimiento y limpieza de equipo'])[1 + g.i % 6]
+        'Mantenimiento y limpieza de equipo')
     END,
     cn.direccion, cn.referencia, 'Trujillo', cn.latitud, cn.longitud,
-    CURRENT_DATE - (8 + (g.i * 7) % 172),
-    (ARRAY['08:00','09:00','10:00','11:00','14:00','15:00','16:00'])[1 + g.i % 7]::time,
+    DATE_SUB(CURRENT_DATE, INTERVAL (8 + (g.i * 7) % 172) DAY),
+    CAST(ELT(1 + g.i % 7, '08:00','09:00','10:00','11:00','14:00','15:00','16:00') AS TIME),
     'CALIFICADA',
     'Atendido y cerrado',
     en.tarifa_base,
     en.tarifa_base + (g.i % 6) * 15,
-    (CURRENT_DATE - (8 + (g.i * 7) % 172))::timestamptz + ((7 + g.i % 4) || ' hours')::interval,
-    (CURRENT_DATE - (8 + (g.i * 7) % 172))::timestamptz + ((7 + g.i % 4) || ' hours')::interval
-        + ((90 + (g.i % 11) * 25) || ' minutes')::interval
+    TIMESTAMP(DATE_SUB(CURRENT_DATE, INTERVAL (8 + (g.i * 7) % 172) DAY)) + INTERVAL (7 + g.i % 4) HOUR,
+    TIMESTAMP(DATE_SUB(CURRENT_DATE, INTERVAL (8 + (g.i * 7) % 172) DAY)) + INTERVAL (7 + g.i % 4) HOUR
+        + INTERVAL (90 + (g.i % 11) * 25) MINUTE
 FROM (VALUES
-    ('20601234567', 125),
-    ('20609876543',  87),
-    ('20605554443',  53)
+    ROW('20601234567', 125),
+    ROW('20609876543',  87),
+    ROW('20605554443',  53)
 ) AS lote(ruc, cuantas)
 JOIN mype m   ON m.ruc = lote.ruc
-CROSS JOIN LATERAL generate_series(1, lote.cuantas) AS g(i)
+JOIN g ON g.i <= lote.cuantas
 JOIN tec_num tn ON tn.mype_id = m.id AND tn.n = g.i % tn.cuantos
 JOIN esp_num en ON en.mype_id = m.id AND en.n = g.i % en.cuantas
-JOIN cli_num cn ON cn.n = g.i % cn.cuantos;
+JOIN cli_num cn ON cn.n = g.i % cn.cuantos
+-- Orden fijo: los id salen siempre iguales.
+ORDER BY m.id, g.i;
 
 INSERT INTO orden_historial (orden_id, estado_anterior, estado_nuevo, actor, nota, ocurrido_en)
 SELECT os.id, NULL, 'PENDIENTE', 'CLIENTE', 'El cliente registró la solicitud', os.creada_en
@@ -349,21 +356,21 @@ SELECT os.id, 'EN_PROCESO', 'COMPLETADA', 'TECNICO', 'Trabajo terminado', os.act
 FROM orden_servicio os WHERE os.codigo LIKE 'ORD-H%'
 UNION ALL
 SELECT os.id, 'COMPLETADA', 'CALIFICADA', 'CLIENTE', 'El cliente calificó el servicio',
-       os.actualizada_en + interval '3 hours'
+       os.actualizada_en + INTERVAL 3 HOUR
 FROM orden_servicio os WHERE os.codigo LIKE 'ORD-H%';
 
 INSERT INTO calificacion (orden_id, puntaje, creada_en)
 SELECT os.id,
-       CASE WHEN right(os.codigo, 4)::int % 5 < lote.umbral THEN 4 ELSE 5 END,
-       os.actualizada_en + interval '3 hours'
+       CASE WHEN CAST(RIGHT(os.codigo, 4) AS UNSIGNED) % 5 < lote.umbral THEN 4 ELSE 5 END,
+       os.actualizada_en + INTERVAL 3 HOUR
 FROM orden_servicio os
 JOIN mype m ON m.id = os.mype_id
-JOIN (VALUES ('20601234567', 1), ('20609876543', 2), ('20605554443', 3)) AS lote(ruc, umbral)
+JOIN (VALUES ROW('20601234567', 1), ROW('20609876543', 2), ROW('20605554443', 3)) AS lote(ruc, umbral)
      ON lote.ruc = m.ruc
 WHERE os.codigo LIKE 'ORD-H%';
 
 INSERT INTO pago (orden_id, metodo, monto, estado, pagado_en)
 SELECT os.id,
-       (ARRAY['EFECTIVO','YAPE','PLIN','EFECTIVO'])[1 + right(os.codigo, 4)::int % 4],
-       os.total, 'PAGADO', os.actualizada_en + interval '20 minutes'
+       ELT(1 + CAST(RIGHT(os.codigo, 4) AS UNSIGNED) % 4, 'EFECTIVO','YAPE','PLIN','EFECTIVO'),
+       os.total, 'PAGADO', os.actualizada_en + INTERVAL 20 MINUTE
 FROM orden_servicio os WHERE os.codigo LIKE 'ORD-H%';

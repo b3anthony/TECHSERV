@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head><meta charset="UTF-8"><title>Eliminamos la cuenta de tu taller</title></head>
+<body style="font-family: sans-serif; font-size: 16px; line-height: 1.5;">
+  <h1>Eliminamos la cuenta de <span th:text="${razonSocial}">Tu taller</span></h1>
+  <p>Hola, <span th:text="${nombre}">Nombre</span>.</p>
+  <p>La cuenta de tu taller se eliminó el <span th:text="${fecha}">Fecha</span>.</p>
+  <p>Sus técnicos ya no pueden entrar a TechServ.</p>
+  <p>Las órdenes abiertas que aún no habían empezado se cancelaron: <strong th:text="${canceladas}">Cantidad</strong>.</p>
+</body>
+</html>

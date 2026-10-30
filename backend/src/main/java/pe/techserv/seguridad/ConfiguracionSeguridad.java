@@ -47,6 +47,8 @@ public class ConfiguracionSeguridad {
             .authorizeHttpRequests(rutas -> rutas
                 // públicas: entrar, registrarse y mirar el catálogo de talleres
                 .requestMatchers("/api/auth/login", "/api/auth/registro/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/recuperar-clave",
+                        "/api/auth/restablecer-clave").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/catalogo/**").permitAll()
                 // el técnico llega desde el correo, sin sesión: su seguridad es
                 // el token firmado de un solo uso, no una contraseña

@@ -11,6 +11,7 @@ import pe.techserv.panel.dto.PeticionAsignar;
 import pe.techserv.panel.dto.TecnicoDisponible;
 import pe.techserv.seguridad.UsuarioAutenticado;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -33,9 +34,29 @@ public class ControladorPanel {
     @GetMapping("/ordenes")
     public Page<OrdenResumen> bandeja(@AuthenticationPrincipal UsuarioAutenticado usuario,
                                       @RequestParam(required = false) EstadoOrden estado,
+                                      @RequestParam(required = false) String q,
+                                      @RequestParam(required = false) Long tecnicoId,
+                                      @RequestParam(defaultValue = "false") boolean sinTecnico,
+                                      @RequestParam(required = false) LocalDate desde,
+                                      @RequestParam(required = false) LocalDate hasta,
+                                      @RequestParam(required = false) BusquedaOrdenes.Orden orden,
                                       @RequestParam(defaultValue = "0") int pagina,
                                       @RequestParam(defaultValue = "20") int tamano) {
-        return panel.bandeja(usuario.mypeIdObligatorio(), estado, pagina, Math.min(tamano, 100));
+        var filtro = new BusquedaOrdenes.Filtro(q, tecnicoId, sinTecnico, desde, hasta, orden);
+        return panel.bandeja(usuario.mypeIdObligatorio(), estado, filtro,
+                             Math.max(pagina, 0), Math.clamp(tamano, 1, 100));
+    }
+
+    /** Los números de las pestañas: los mismos filtros que la lista, sin la etapa. */
+    @GetMapping("/ordenes/conteos")
+    public ServicioPanel.ConteosBandeja conteos(@AuthenticationPrincipal UsuarioAutenticado usuario,
+                                                @RequestParam(required = false) String q,
+                                                @RequestParam(required = false) Long tecnicoId,
+                                                @RequestParam(defaultValue = "false") boolean sinTecnico,
+                                                @RequestParam(required = false) LocalDate desde,
+                                                @RequestParam(required = false) LocalDate hasta) {
+        var filtro = new BusquedaOrdenes.Filtro(q, tecnicoId, sinTecnico, desde, hasta, null);
+        return panel.conteos(usuario.mypeIdObligatorio(), filtro);
     }
 
     @GetMapping("/ordenes/{id}")

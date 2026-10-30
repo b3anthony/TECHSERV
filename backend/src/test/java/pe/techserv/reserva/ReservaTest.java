@@ -150,7 +150,7 @@ class ReservaTest extends BasePruebaIntegracion {
         // otra). Lo que se prueba es que el catalogo cuenta las calificaciones
         // reales, no un numero fijo.
         var esperado = jdbc.queryForMap("""
-                SELECT ROUND(AVG(cal.puntaje)::numeric, 1)::float8 AS promedio,
+                SELECT CAST(ROUND(AVG(cal.puntaje), 1) AS DOUBLE)  AS promedio,
                        COUNT(cal.id)                               AS servicios
                   FROM mype m
                   JOIN orden_servicio os ON os.mype_id = m.id

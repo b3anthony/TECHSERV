@@ -13,12 +13,10 @@ Tiempo aproximado la primera vez: 30 a 45 minutos, casi todo en descargas.
 
 1. Descarga desde https://git-scm.com/download/win e instala con las opciones
    por defecto.
-2. Esto también instala **Git Bash**, que sirve para correr los scripts `.sh`
-   de la carpeta `scripts/`.
 
 ### 1.2 Docker Desktop
 
-Docker corre la base de datos (PostgreSQL) y la bandeja de correo (Mailpit)
+Docker corre la base de datos (MySQL) y la bandeja de correo (Mailpit)
 sin que tengas que instalarlas.
 
 1. Descarga desde https://www.docker.com/products/docker-desktop/ e instala.
@@ -63,7 +61,7 @@ node -v
 Cada uno tiene que responder con su versión. `java -version` tiene que decir
 **21**, y `node -v` **v22** (o al menos v20.19).
 
-**No hace falta instalar Maven** (el proyecto lo trae) **ni PostgreSQL** (va
+**No hace falta instalar Maven** (el proyecto lo trae) **ni MySQL** (va
 dentro de Docker).
 
 ---
@@ -100,14 +98,17 @@ Con **Docker Desktop abierto**, en PowerShell, dentro de la carpeta `TECHSERV`:
 docker compose up -d
 ```
 
-La primera vez descarga las imágenes (unos 100 MB). Cuando termine, comprueba:
+La primera vez descarga las imágenes: varios cientos de MB (MySQL ocupa cerca de
+1 GB ya instalado). Cuando termine, comprueba:
 
 ```powershell
 docker compose ps
 ```
 
-Tienen que aparecer `techserv-db` y `techserv-correo` con estado `Up`
-(`techserv-db` además con `healthy`).
+Tienen que aparecer `techserv-mysql` y `techserv-correo` con estado `Up`
+(`techserv-mysql` además con `healthy`). La primera vez MySQL tarda entre 30
+segundos y un minuto en prepararse: si dice `starting`, espera y repite
+`docker compose ps`.
 
 ---
 
@@ -131,7 +132,7 @@ En ese primer arranque, el backend crea todas las tablas y carga los **datos de
 prueba** (talleres, usuarios, órdenes, calificaciones). En el registro verás:
 
 ```text
-Successfully applied 6 migrations to schema "public", now at version v6
+Successfully applied 10 migrations to schema `techserv`, now at version v10
 ```
 
 No hay que importar ninguna base a mano.
@@ -215,7 +216,7 @@ npm install
 ```
 
 Después, reinicia el backend. Si alguien añadió una migración nueva
-(`V7__...sql`), el backend la aplica sola al arrancar.
+(`V11__...sql`), el backend la aplica sola al arrancar.
 
 ### Volver a los datos de prueba originales
 
@@ -229,6 +230,18 @@ docker compose up -d
 Y arranca otra vez el backend. `-v` **borra la base entera**; al arrancar, el
 backend la vuelve a crear con los datos de prueba.
 
+### Si ya tenías la versión anterior (con PostgreSQL)
+
+Desde octubre de 2026 el proyecto usa **MySQL**. Después del `git pull`:
+
+1. `docker compose up -d` levanta el nuevo contenedor `techserv-mysql`. Si
+   avisa de *orphan containers* por `techserv-db`, es la base antigua: ya no
+   hace falta y puedes pararla con `docker stop techserv-db`.
+2. Arranca el backend: crea las tablas en MySQL con los datos de prueba.
+
+Los datos que tuvieras en PostgreSQL no pasan a MySQL: empiezas con los datos
+de prueba, como en una instalación nueva.
+
 ---
 
 ## Problemas frecuentes
@@ -236,15 +249,14 @@ backend la vuelve a crear con los datos de prueba.
 | Síntoma | Causa y solución |
 |---|---|
 | `docker: command not found`, o *error during connect* | Docker Desktop no está abierto. Ábrelo y espera a *Engine running*. |
-| `Bind for 0.0.0.0:55432 failed: port is already allocated` | Otro programa usa ese puerto. Cierra el otro contenedor o cambia `55432` en `docker-compose.yml` y en `backend/src/main/resources/application.yml`. |
+| `Bind for 0.0.0.0:33306 failed: port is already allocated` | Otro programa usa ese puerto. Cierra el otro contenedor o cambia `33306` en `docker-compose.yml` y en `backend/src/main/resources/application.yml`. |
 | `Port 8080 was already in use` | Ya hay un backend corriendo (quizá en otra ventana). Ciérralo, o busca qué lo usa con `netstat -ano \| findstr :8080`. |
 | `JAVA_HOME not found` o `JAVA_HOME is set to an invalid directory` | Reinstala el JDK marcando **Set JAVA_HOME variable**, o créala a mano en *Variables de entorno* apuntando a la carpeta del JDK (por ejemplo `C:\Program Files\Eclipse Adoptium\jdk-21...`). Cierra y abre PowerShell. |
 | `release version 21 not supported` | Tienes otro Java por delante en el PATH. `java -version` tiene que decir 21. |
-| `Connection to localhost:55432 refused` al arrancar el backend | La base no está levantada. Ejecuta `docker compose up -d` y espera a que `docker compose ps` diga `healthy`. |
+| `Communications link failure` al arrancar el backend | La base no está levantada. Ejecuta `docker compose up -d` y espera a que `docker compose ps` diga `healthy`. |
 | `Validate failed: Migrations have failed validation` | Tu base es de una versión vieja del proyecto con migraciones distintas. Bórrala con `docker compose down -v` y vuelve a levantarla. |
 | La web carga pero dice que no puede conectar, o no aparece nada | El backend no está corriendo o todavía está arrancando. Mira su ventana. |
 | `npm install` falla con `EPERM` o `EBUSY` | Cierra VS Code y el antivirus que esté escaneando la carpeta, y vuelve a intentarlo. Si sigue, borra la carpeta `frontend\node_modules` y repite. |
-| Los scripts de `scripts/` no corren en PowerShell | Son de bash: ábrelos con **Git Bash** (`./scripts/verificar-diseno.sh HEAD`). |
 | No llega el correo del técnico | Mira http://localhost:8025. Si Mailpit no abre, `docker compose ps` tiene que mostrar `techserv-correo`. |
 
 ---

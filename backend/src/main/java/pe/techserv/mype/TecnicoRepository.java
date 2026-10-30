@@ -72,10 +72,10 @@ public interface TecnicoRepository extends JpaRepository<Tecnico, Long> {
 
     @Query(value = """
            SELECT
-               t.id AS "tecnicoId",
-               CONCAT(u.nombres, ' ', u.apellidos) AS "nombreCompleto",
-               COUNT(h.id) AS "ordenesCompletadas",
-               COALESCE(SUM(p.monto), 0) AS "ingresoGenerado"
+               t.id AS `tecnicoId`,
+               CONCAT(u.nombres, ' ', u.apellidos) AS `nombreCompleto`,
+               COUNT(h.id) AS `ordenesCompletadas`,
+               COALESCE(SUM(p.monto), 0) AS `ingresoGenerado`
            FROM orden_servicio os
            JOIN tecnico t ON t.id = os.tecnico_id
            JOIN usuario u ON u.id = t.usuario_id
@@ -84,7 +84,7 @@ public interface TecnicoRepository extends JpaRepository<Tecnico, Long> {
            WHERE os.mype_id = :mypeId
              AND h.ocurrido_en BETWEEN :desde AND :hasta
            GROUP BY t.id, u.nombres, u.apellidos
-           ORDER BY COUNT(h.id) DESC, "nombreCompleto" ASC
+           ORDER BY COUNT(h.id) DESC, `nombreCompleto` ASC
            """, nativeQuery = true)
     List<RankingTecnicoProyeccion> rankingTecnicos(@Param("mypeId") Long mypeId,
                                                    @Param("desde") OffsetDateTime desde,

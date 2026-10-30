@@ -1,16 +1,28 @@
--- Esquema de TechServ.
+-- Esquema de TechServ (MySQL 8.4).
 --
 -- Dos criterios que se repiten en todo el archivo:
---   1. Los enumerados se guardan como texto con CHECK, no como enum de Postgres
---      ni como ordinal. Asi una consulta a mano en psql se lee sin diccionario,
---      y anadir un valor no obliga a un ALTER TYPE.
+--   1. Los enumerados se guardan como texto con CHECK, no como ENUM de MySQL
+--      ni como ordinal. Asi una consulta a mano se lee sin diccionario, y
+--      anadir un valor no obliga a un ALTER TABLE ... MODIFY.
 --   2. Toda tabla de negocio lleva mype_id. Es la linea del multi-inquilino: si
 --      una consulta no filtra por ella, el fallo se ve aqui.
+--
+-- Y tres de MySQL que conviene no olvidar al tocarlo:
+--   - Las claves foraneas van como FOREIGN KEY de tabla. Un REFERENCES escrito
+--     dentro de la columna MySQL lo acepta y lo IGNORA: ni comprueba ni borra
+--     en cascada.
+--   - Las fechas con hora son DATETIME(6) en hora de Lima: MySQL no tiene un
+--     tipo con zona. La conexion fija esa zona (application.yml).
+--   - Cotejamiento utf8mb4_0900_as_cs: distingue mayusculas y tildes, como
+--     PostgreSQL. Las busquedas que no deben distinguirlas lo dicen en la
+--     consulta, no lo heredan de la base.
+
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_as_cs;
 
 -- ───────────────────────────── identidad ─────────────────────────────
 
 CREATE TABLE usuario (
-    id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id             BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
     nombres        VARCHAR(80)  NOT NULL,
     apellidos      VARCHAR(80)  NOT NULL,
     email          VARCHAR(160) NOT NULL UNIQUE,
@@ -18,7 +30,7 @@ CREATE TABLE usuario (
     telefono       VARCHAR(20),
     rol            VARCHAR(20)  NOT NULL,
     activo         BOOLEAN      NOT NULL DEFAULT TRUE,
-    creado_en      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    creado_en      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT usuario_rol_valido CHECK (rol IN ('CLIENTE', 'ADMIN_MYPE', 'TECNICO'))
 );
 
@@ -27,28 +39,29 @@ CREATE INDEX idx_usuario_rol ON usuario (rol);
 -- ───────────────────────────── el negocio ─────────────────────────────
 
 CREATE TABLE mype (
-    id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id                 BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
     razon_social       VARCHAR(160) NOT NULL,
     ruc                VARCHAR(11)  NOT NULL UNIQUE,
     descripcion        TEXT,
     telefono           VARCHAR(20),
     direccion          VARCHAR(200) NOT NULL,
     distrito           VARCHAR(60)  NOT NULL,
-    latitud            NUMERIC(10, 7),
-    longitud           NUMERIC(10, 7),
+    latitud            DECIMAL(10, 7),
+    longitud           DECIMAL(10, 7),
     activo             BOOLEAN      NOT NULL DEFAULT TRUE,
-    creado_en          TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    CONSTRAINT mype_ruc_once_digitos CHECK (ruc ~ '^[0-9]{11}$')
+    creado_en          DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT mype_ruc_once_digitos CHECK (REGEXP_LIKE(ruc, '^[0-9]{11}$'))
 );
 
 CREATE INDEX idx_mype_distrito ON mype (distrito);
 
 -- Que especialidades atiende cada taller y cuanto cobra por la visita.
 CREATE TABLE mype_especialidad (
-    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    mype_id      BIGINT        NOT NULL REFERENCES mype (id) ON DELETE CASCADE,
-    especialidad VARCHAR(40)   NOT NULL,
-    tarifa_base  NUMERIC(10, 2) NOT NULL,
+    id           BIGINT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mype_id      BIGINT         NOT NULL,
+    especialidad VARCHAR(40)    NOT NULL,
+    tarifa_base  DECIMAL(10, 2) NOT NULL,
+    CONSTRAINT mype_esp_mype FOREIGN KEY (mype_id) REFERENCES mype (id) ON DELETE CASCADE,
     CONSTRAINT mype_esp_valida CHECK (especialidad IN
         ('SERVICIOS_HOGAR', 'SOPORTE_INFORMATICO', 'REPARACION_ELECTRODOMESTICOS')),
     CONSTRAINT mype_esp_tarifa_positiva CHECK (tarifa_base > 0),
@@ -58,35 +71,41 @@ CREATE TABLE mype_especialidad (
 -- ───────────────────────────── perfiles por rol ─────────────────────────────
 
 CREATE TABLE cliente (
-    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id BIGINT       NOT NULL UNIQUE REFERENCES usuario (id) ON DELETE CASCADE,
+    id         BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    usuario_id BIGINT       NOT NULL UNIQUE,
     direccion  VARCHAR(200),
     referencia VARCHAR(200),
     distrito   VARCHAR(60),
-    latitud    NUMERIC(10, 7),
-    longitud   NUMERIC(10, 7)
+    latitud    DECIMAL(10, 7),
+    longitud   DECIMAL(10, 7),
+    CONSTRAINT cliente_usuario FOREIGN KEY (usuario_id) REFERENCES usuario (id) ON DELETE CASCADE
 );
 
 CREATE TABLE administrador (
-    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id BIGINT NOT NULL UNIQUE REFERENCES usuario (id) ON DELETE CASCADE,
-    mype_id    BIGINT NOT NULL REFERENCES mype (id) ON DELETE CASCADE
+    id         BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    usuario_id BIGINT NOT NULL UNIQUE,
+    mype_id    BIGINT NOT NULL,
+    CONSTRAINT administrador_usuario FOREIGN KEY (usuario_id) REFERENCES usuario (id) ON DELETE CASCADE,
+    CONSTRAINT administrador_mype    FOREIGN KEY (mype_id)    REFERENCES mype (id)    ON DELETE CASCADE
 );
 
 CREATE TABLE tecnico (
-    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id BIGINT      NOT NULL UNIQUE REFERENCES usuario (id) ON DELETE CASCADE,
-    mype_id    BIGINT      NOT NULL REFERENCES mype (id) ON DELETE CASCADE,
+    id         BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    usuario_id BIGINT      NOT NULL UNIQUE,
+    mype_id    BIGINT      NOT NULL,
     disponible BOOLEAN     NOT NULL DEFAULT TRUE,
-    creado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
+    creado_en  DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT tecnico_usuario FOREIGN KEY (usuario_id) REFERENCES usuario (id) ON DELETE CASCADE,
+    CONSTRAINT tecnico_mype    FOREIGN KEY (mype_id)    REFERENCES mype (id)    ON DELETE CASCADE
 );
 
 CREATE INDEX idx_tecnico_mype ON tecnico (mype_id);
 
 CREATE TABLE tecnico_especialidad (
-    tecnico_id   BIGINT      NOT NULL REFERENCES tecnico (id) ON DELETE CASCADE,
+    tecnico_id   BIGINT      NOT NULL,
     especialidad VARCHAR(40) NOT NULL,
     PRIMARY KEY (tecnico_id, especialidad),
+    CONSTRAINT tecnico_esp_tecnico FOREIGN KEY (tecnico_id) REFERENCES tecnico (id) ON DELETE CASCADE,
     CONSTRAINT tecnico_esp_valida CHECK (especialidad IN
         ('SERVICIOS_HOGAR', 'SOPORTE_INFORMATICO', 'REPARACION_ELECTRODOMESTICOS'))
 );
@@ -94,13 +113,14 @@ CREATE TABLE tecnico_especialidad (
 -- ───────────────────────────── inventario ─────────────────────────────
 
 CREATE TABLE repuesto (
-    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    mype_id     BIGINT         NOT NULL REFERENCES mype (id) ON DELETE CASCADE,
+    id          BIGINT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    mype_id     BIGINT         NOT NULL,
     nombre      VARCHAR(120)   NOT NULL,
     descripcion VARCHAR(250),
-    precio      NUMERIC(10, 2) NOT NULL,
+    precio      DECIMAL(10, 2) NOT NULL,
     stock       INTEGER        NOT NULL DEFAULT 0,
     activo      BOOLEAN        NOT NULL DEFAULT TRUE,
+    CONSTRAINT repuesto_mype FOREIGN KEY (mype_id) REFERENCES mype (id) ON DELETE CASCADE,
     CONSTRAINT repuesto_precio_positivo CHECK (precio >= 0),
     CONSTRAINT repuesto_stock_no_negativo CHECK (stock >= 0)
 );
@@ -110,26 +130,29 @@ CREATE INDEX idx_repuesto_mype ON repuesto (mype_id);
 -- ───────────────────────────── la orden ─────────────────────────────
 
 CREATE TABLE orden_servicio (
-    id                 BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    codigo             VARCHAR(16)  NOT NULL UNIQUE,
-    cliente_id         BIGINT       NOT NULL REFERENCES cliente (id),
-    mype_id            BIGINT       NOT NULL REFERENCES mype (id),
-    tecnico_id         BIGINT       REFERENCES tecnico (id),
-    especialidad       VARCHAR(40)  NOT NULL,
-    descripcion_falla  TEXT         NOT NULL,
-    direccion          VARCHAR(200) NOT NULL,
+    id                 BIGINT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    codigo             VARCHAR(16)    NOT NULL UNIQUE,
+    cliente_id         BIGINT         NOT NULL,
+    mype_id            BIGINT         NOT NULL,
+    tecnico_id         BIGINT,
+    especialidad       VARCHAR(40)    NOT NULL,
+    descripcion_falla  TEXT           NOT NULL,
+    direccion          VARCHAR(200)   NOT NULL,
     referencia         VARCHAR(200),
-    distrito           VARCHAR(60)  NOT NULL,
-    latitud            NUMERIC(10, 7),
-    longitud           NUMERIC(10, 7),
-    fecha_programada   DATE         NOT NULL,
-    hora_programada    TIME         NOT NULL,
-    estado             VARCHAR(20)  NOT NULL DEFAULT 'PENDIENTE',
+    distrito           VARCHAR(60)    NOT NULL,
+    latitud            DECIMAL(10, 7),
+    longitud           DECIMAL(10, 7),
+    fecha_programada   DATE           NOT NULL,
+    hora_programada    TIME           NOT NULL,
+    estado             VARCHAR(20)    NOT NULL DEFAULT 'PENDIENTE',
     diagnostico        TEXT,
-    precio_mano_obra   NUMERIC(10, 2),
-    total              NUMERIC(10, 2),
-    creada_en          TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    actualizada_en     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    precio_mano_obra   DECIMAL(10, 2),
+    total              DECIMAL(10, 2),
+    creada_en          DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    actualizada_en     DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT orden_cliente FOREIGN KEY (cliente_id) REFERENCES cliente (id),
+    CONSTRAINT orden_mype    FOREIGN KEY (mype_id)    REFERENCES mype (id),
+    CONSTRAINT orden_tecnico FOREIGN KEY (tecnico_id) REFERENCES tecnico (id),
     CONSTRAINT orden_esp_valida CHECK (especialidad IN
         ('SERVICIOS_HOGAR', 'SOPORTE_INFORMATICO', 'REPARACION_ELECTRODOMESTICOS')),
     CONSTRAINT orden_estado_valido CHECK (estado IN
@@ -148,13 +171,14 @@ CREATE INDEX idx_orden_tecnico     ON orden_servicio (tecnico_id);
 CREATE INDEX idx_orden_agenda      ON orden_servicio (mype_id, fecha_programada, hora_programada);
 
 CREATE TABLE orden_foto (
-    id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    orden_id       BIGINT       NOT NULL REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    id             BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orden_id       BIGINT       NOT NULL,
     nombre_archivo VARCHAR(160) NOT NULL,
     ruta           VARCHAR(300) NOT NULL,
     tipo_mime      VARCHAR(60)  NOT NULL,
     tamano_bytes   BIGINT       NOT NULL,
-    subida_en      TIMESTAMPTZ  NOT NULL DEFAULT now()
+    subida_en      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT foto_orden FOREIGN KEY (orden_id) REFERENCES orden_servicio (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_foto_orden ON orden_foto (orden_id);
@@ -162,14 +186,16 @@ CREATE INDEX idx_foto_orden ON orden_foto (orden_id);
 -- Cada cambio de estado deja rastro. Es lo que convierte "el tecnico dice que
 -- llego a las 3" en un dato.
 CREATE TABLE orden_historial (
-    id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    orden_id         BIGINT      NOT NULL REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    id               BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orden_id         BIGINT       NOT NULL,
     estado_anterior  VARCHAR(20),
-    estado_nuevo     VARCHAR(20) NOT NULL,
-    actor            VARCHAR(20) NOT NULL,
-    actor_usuario_id BIGINT      REFERENCES usuario (id),
+    estado_nuevo     VARCHAR(20)  NOT NULL,
+    actor            VARCHAR(20)  NOT NULL,
+    actor_usuario_id BIGINT,
     nota             VARCHAR(300),
-    ocurrido_en      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ocurrido_en      DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT historial_orden   FOREIGN KEY (orden_id)         REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    CONSTRAINT historial_usuario FOREIGN KEY (actor_usuario_id) REFERENCES usuario (id),
     CONSTRAINT historial_actor_valido CHECK (actor IN
         ('CLIENTE', 'ADMIN_MYPE', 'TECNICO', 'SISTEMA'))
 );
@@ -177,34 +203,38 @@ CREATE TABLE orden_historial (
 CREATE INDEX idx_historial_orden ON orden_historial (orden_id, ocurrido_en);
 
 CREATE TABLE orden_repuesto (
-    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    orden_id        BIGINT         NOT NULL REFERENCES orden_servicio (id) ON DELETE CASCADE,
-    repuesto_id     BIGINT         NOT NULL REFERENCES repuesto (id),
+    id              BIGINT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orden_id        BIGINT         NOT NULL,
+    repuesto_id     BIGINT         NOT NULL,
     cantidad        INTEGER        NOT NULL,
     -- Se congela el precio del momento: si manana sube el repuesto, la orden
     -- cerrada no cambia de total.
-    precio_unitario NUMERIC(10, 2) NOT NULL,
+    precio_unitario DECIMAL(10, 2) NOT NULL,
+    CONSTRAINT orden_rep_orden    FOREIGN KEY (orden_id)    REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    CONSTRAINT orden_rep_repuesto FOREIGN KEY (repuesto_id) REFERENCES repuesto (id),
     CONSTRAINT orden_rep_cantidad_positiva CHECK (cantidad > 0)
 );
 
 CREATE INDEX idx_orden_repuesto_orden ON orden_repuesto (orden_id);
 
 CREATE TABLE calificacion (
-    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    orden_id    BIGINT      NOT NULL UNIQUE REFERENCES orden_servicio (id) ON DELETE CASCADE,
-    puntaje     INTEGER     NOT NULL,
+    id          BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orden_id    BIGINT       NOT NULL UNIQUE,
+    puntaje     INTEGER      NOT NULL,
     comentario  VARCHAR(500),
-    creada_en   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    creada_en   DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT calificacion_orden FOREIGN KEY (orden_id) REFERENCES orden_servicio (id) ON DELETE CASCADE,
     CONSTRAINT calificacion_rango CHECK (puntaje BETWEEN 1 AND 5)
 );
 
 CREATE TABLE pago (
-    id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    orden_id  BIGINT         NOT NULL UNIQUE REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    id        BIGINT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orden_id  BIGINT         NOT NULL UNIQUE,
     metodo    VARCHAR(20)    NOT NULL,
-    monto     NUMERIC(10, 2) NOT NULL,
+    monto     DECIMAL(10, 2) NOT NULL,
     estado    VARCHAR(20)    NOT NULL DEFAULT 'PENDIENTE',
-    pagado_en TIMESTAMPTZ,
+    pagado_en DATETIME(6),
+    CONSTRAINT pago_orden FOREIGN KEY (orden_id) REFERENCES orden_servicio (id) ON DELETE CASCADE,
     CONSTRAINT pago_metodo_valido CHECK (metodo IN ('EFECTIVO', 'YAPE', 'PLIN', 'TRANSFERENCIA')),
     CONSTRAINT pago_estado_valido CHECK (estado IN ('PENDIENTE', 'PAGADO')),
     CONSTRAINT pago_monto_positivo CHECK (monto >= 0)
@@ -213,15 +243,18 @@ CREATE TABLE pago (
 -- ──────────────── los botones firmados del correo del tecnico ────────────────
 
 -- Un jti por boton. Al usarse se marca usado_en y el mismo enlace ya no sirve:
--- reenviar el correo no reabre la accion.
+-- reenviar el correo no reabre la accion. El UUID va en sus 16 bytes, que es
+-- como Hibernate lo guarda en MySQL.
 CREATE TABLE accion_token (
-    jti        UUID         PRIMARY KEY,
-    orden_id   BIGINT       NOT NULL REFERENCES orden_servicio (id) ON DELETE CASCADE,
-    tecnico_id BIGINT       NOT NULL REFERENCES tecnico (id) ON DELETE CASCADE,
+    jti        BINARY(16)   NOT NULL PRIMARY KEY,
+    orden_id   BIGINT       NOT NULL,
+    tecnico_id BIGINT       NOT NULL,
     accion     VARCHAR(20)  NOT NULL,
-    expira_en  TIMESTAMPTZ  NOT NULL,
-    usado_en   TIMESTAMPTZ,
-    creado_en  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    expira_en  DATETIME(6)  NOT NULL,
+    usado_en   DATETIME(6),
+    creado_en  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT accion_token_orden   FOREIGN KEY (orden_id)   REFERENCES orden_servicio (id) ON DELETE CASCADE,
+    CONSTRAINT accion_token_tecnico FOREIGN KEY (tecnico_id) REFERENCES tecnico (id)        ON DELETE CASCADE,
     CONSTRAINT accion_valida CHECK (accion IN ('CONFIRMAR', 'EN_CAMINO', 'COMPLETAR'))
 );
 

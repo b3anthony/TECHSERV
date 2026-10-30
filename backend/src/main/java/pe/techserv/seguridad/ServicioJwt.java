@@ -49,6 +49,14 @@ public class ServicioJwt {
         this.horasAccion = props.tokenAccion().horas();
     }
 
+    /** Nombre del claim con el sello de la contraseña (ver {@link #selloClave}). */
+    public static final String SELLO_CLAVE = "cc";
+
+    /** Milisegundos del último restablecimiento de la contraseña; 0 si nunca se restableció. */
+    public static long selloClave(Usuario usuario) {
+        return usuario.getClaveCambiadaEn() == null ? 0L : usuario.getClaveCambiadaEn().toInstant().toEpochMilli();
+    }
+
     public String paraSesion(Usuario usuario) {
         Instant ahora = Instant.now();
         return Jwts.builder()
@@ -56,6 +64,10 @@ public class ServicioJwt {
                 .claim("tipo", TIPO_SESION)
                 .claim("uid", usuario.getId())
                 .claim("rol", usuario.getRol().name())
+                // El sello de la contraseña con la que se entró: sale de la MISMA
+                // fila que el hash comprobado. Si la clave cambia después, deja de
+                // coincidir y la sesión cae, aunque se emitiera un instante más tarde.
+                .claim(SELLO_CLAVE, selloClave(usuario))
                 .issuedAt(Date.from(ahora))
                 .expiration(Date.from(ahora.plus(horasSesion, ChronoUnit.HOURS)))
                 .signWith(clave)

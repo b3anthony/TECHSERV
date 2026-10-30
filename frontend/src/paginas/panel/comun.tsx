@@ -4,18 +4,7 @@ import { Icono } from '../../componentes/Icono.tsx'
 import type { IconoNombre } from '../../componentes/Icono.tsx'
 import { focoClaro } from '../../componentes/marco/foco.ts'
 import type { EstadoOrden } from '../../tipos.ts'
-import { ETIQUETA_ADMIN, botonIcono } from './formato.ts'
-
-const TONO_ESTADO: Record<EstadoOrden, { chip: string; punto: string }> = {
-  PENDIENTE: { chip: 'border-publico-acento-hondo bg-publico-acento text-publico-tinta', punto: 'bg-publico-tinta' },
-  ASIGNADA: { chip: 'border-publico-acento-hondo/40 bg-publico-acento-tenue text-publico-chip-texto', punto: 'bg-publico-acento-hondo' },
-  CONFIRMADA: { chip: 'border-publico-acento-hondo/40 bg-publico-acento-tenue text-publico-chip-texto', punto: 'bg-publico-acento-hondo' },
-  EN_CAMINO: { chip: 'border-publico-panel bg-publico-panel text-publico-superficie', punto: 'bg-publico-acento' },
-  EN_PROCESO: { chip: 'border-publico-panel bg-publico-panel text-publico-superficie', punto: 'bg-publico-acento' },
-  COMPLETADA: { chip: 'border-publico-completada/40 bg-publico-superficie text-publico-completada', punto: 'bg-publico-completada' },
-  CALIFICADA: { chip: 'border-publico-completada/30 bg-publico-superficie text-publico-completada', punto: 'bg-publico-completada' },
-  CANCELADA: { chip: 'border-publico-linea bg-publico-superficie-suave text-publico-tinta-media', punto: 'bg-publico-tinta-suave' },
-}
+import { ETIQUETA_ADMIN, TONO_ESTADO, botonIcono } from './formato.ts'
 
 export function EstadoChip({ estado, className = '' }: { estado: EstadoOrden; className?: string }): ReactNode {
   const tono = TONO_ESTADO[estado]

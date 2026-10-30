@@ -22,11 +22,11 @@ Trujillo (La Libertad) reciban reservas, asignen técnicos y cobren las visitas.
 | Programa | Versión | Para qué |
 |---|---|---|
 | [Git](https://git-scm.com/download/win) | cualquiera reciente | Descargar el proyecto |
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | 4.x o superior | Base de datos PostgreSQL y bandeja de correo |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | 4.x o superior | Base de datos MySQL y bandeja de correo |
 | [JDK 21](https://adoptium.net/temurin/releases/?version=21) (Temurin) | **21** | Backend (Spring Boot) |
 | [Node.js](https://nodejs.org/) | **22 LTS** (mínimo 20.19) | Frontend (React + Vite) |
 
-**No hace falta instalar Maven ni PostgreSQL.** El backend trae su propio Maven
+**No hace falta instalar Maven ni MySQL.** El backend trae su propio Maven
 (`mvnw` / `mvnw.cmd`) y la base de datos corre dentro de Docker.
 
 ---
@@ -42,7 +42,7 @@ sirve PowerShell.
 docker compose up -d
 ```
 
-Levanta dos contenedores: `techserv-db` (PostgreSQL 16) y `techserv-correo`
+Levanta dos contenedores: `techserv-mysql` (MySQL 8.4) y `techserv-correo`
 (Mailpit). Déjalo así; siguen corriendo en segundo plano.
 
 **Terminal 2: backend (API en el puerto 8080)**
@@ -92,7 +92,7 @@ siempre se ve reciente.
 | API del backend | http://localhost:8080 |
 | Documentación de la API (Swagger) | http://localhost:8080/api-docs |
 | Bandeja de correo (Mailpit) | http://localhost:8025 |
-| PostgreSQL | `localhost:55432` · base `techserv` · usuario `techserv` · clave `techserv_local` |
+| MySQL | `localhost:33306` · base `techserv` · usuario `techserv` · clave `techserv_local` |
 
 ---
 
@@ -172,7 +172,7 @@ activa la vista de dispositivo móvil.
 | Pruebas del backend (necesita Docker encendido) | `cd backend` y `.\mvnw.cmd test` |
 | Compilar el frontend y revisar los tipos | `cd frontend` y `npm run build` |
 | Lint del frontend | `cd frontend` y `npm run lint` |
-| Entrar a la base con `psql` | `docker exec -it techserv-db psql -U techserv -d techserv` |
+| Entrar a la base con `mysql` | `docker exec -it techserv-mysql mysql -utechserv -ptechserv_local techserv` |
 
 Las pruebas del backend crean su propia base temporal con Testcontainers: no
 tocan la base de desarrollo.
@@ -189,7 +189,8 @@ Si quieres cambiar alguno, copia `.env.example` a `.env` y edítalo:
 
 | Variable | Por defecto | Qué es |
 |---|---|---|
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `techserv` / `techserv` / `techserv_local` | Credenciales de la base |
+| `MYSQL_DATABASE` / `MYSQL_USER` / `MYSQL_PASSWORD` | `techserv` / `techserv` / `techserv_local` | Credenciales de la base |
+| `MYSQL_ROOT_PASSWORD` | `techserv_root` | Clave de root del contenedor MySQL |
 | `TECHSERV_JWT_SECRETO` | una clave de desarrollo | Firma de las sesiones. **En producción hay que cambiarla.** |
 | `TECHSERV_JWT_HORAS` | `12` | Cuánto dura una sesión |
 | `TECHSERV_TOKEN_ACCION_HORAS` | `72` | Cuánto vale el enlace del técnico |
@@ -206,10 +207,10 @@ El archivo `.env` **nunca se sube** a GitHub (está en `.gitignore`).
 ## 7. Tecnologías
 
 - **Backend:** Java 21, Spring Boot 3.5, Spring Security con JWT, JPA/Hibernate,
-  Flyway, Thymeleaf (correos), PostgreSQL 16. Pruebas con JUnit y Testcontainers.
+  Flyway, Thymeleaf (correos), MySQL 8.4. Pruebas con JUnit y Testcontainers.
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query,
   React Router.
-- **Servicios de apoyo:** Docker Compose con PostgreSQL y Mailpit.
+- **Servicios de apoyo:** Docker Compose con MySQL y Mailpit.
 
 ## 8. Estructura
 
@@ -219,10 +220,9 @@ El archivo `.env` **nunca se sube** a GitHub (está en `.gitignore`).
 │   ├── mvnw, mvnw.cmd    Maven incluido (no hay que instalarlo)
 │   └── src/main/resources/db/migration/   Esquema y datos de prueba (Flyway)
 ├── frontend/             Web en React (cliente, panel del taller y página del técnico)
-├── docs/                 Manual de Windows y consultas SQL de comprobación
-├── scripts/              Verificadores (bash; en Windows, con Git Bash)
+├── docs/                 Manual de instalación en Windows
 ├── uploads/              Fotos que suben los clientes (no se suben a GitHub)
-└── docker-compose.yml    PostgreSQL + Mailpit
+└── docker-compose.yml    MySQL + Mailpit
 ```
 
 ## 9. Qué no hace (a propósito)

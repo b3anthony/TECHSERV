@@ -7,6 +7,7 @@ import { focoAmarillo, focoClaro } from '../../componentes/marco/foco.ts'
 import { Aviso } from '../../componentes/publico/Aviso.tsx'
 import { Paginacion } from '../../componentes/publico/Paginacion.tsx'
 import type { OrdenResumen } from '../../tipos.ts'
+import { GarantiaCliente } from './GarantiaCliente.tsx'
 import { MESES_ESPANOL, horaCorta } from './fechas.ts'
 import { BarraEtapasMini } from './ordenes/BarraEtapas.tsx'
 import { ETIQUETA_ESTADO, GRUPOS, grupoDe, tonoEstado } from './ordenes/etapas.ts'
@@ -188,7 +189,7 @@ function TarjetaOrden({ orden }: { orden: OrdenResumen }): ReactNode {
       </p>
 
       <div className="min-w-0">
-        <p className="text-xs text-publico-tinta-suave">{orden.etiquetaEspecialidad} · <span className="tabular-nums">{orden.codigo}</span></p>
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-publico-tinta-suave">{orden.etiquetaEspecialidad} · <span className="tabular-nums">{orden.codigo}</span>{orden.tipo === 'GARANTIA' && <span className="rounded-md bg-publico-acento-tenue px-2 py-0.5 font-bold text-publico-chip-texto">Garantía</span>}</p>
         <h3 className="mt-1 line-clamp-2 leading-snug font-bold first-letter:uppercase">{orden.descripcionFalla}</h3>
         <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-publico-tinta-media">
           {orden.horaProgramada && (
@@ -212,6 +213,9 @@ function TarjetaOrden({ orden }: { orden: OrdenResumen }): ReactNode {
           <span className="sr-only">de la orden {orden.codigo}</span>
         </Link>
       </div>
+      {orden.tipo === 'NORMAL' && (orden.estado === 'COMPLETADA' || orden.estado === 'CALIFICADA') && orden.garantia && (
+        <div className="relative z-10 col-span-2 sm:col-span-3"><GarantiaCliente ordenId={orden.id} mypeId={orden.mypeId} codigo={orden.codigo} garantia={orden.garantia} /></div>
+      )}
     </article>
   )
 }

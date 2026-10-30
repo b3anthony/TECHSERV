@@ -242,6 +242,32 @@ class CierreTest extends BasePruebaIntegracion {
     }
 
     @Test
+    @DisplayName("Dos líneas del mismo repuesto que desbordan la suma dan 400 y el stock no se toca")
+    void cantidadesQueDesbordanDan400YNoTocanStock() throws Exception {
+        OrdenServicio orden = fabricarOrden(mypeDelgado(), EstadoOrden.EN_PROCESO);
+        Repuesto r = repuestos.findByMypeIdAndActivoTrueOrderByNombreAsc(mypeDelgado()).get(0);
+        int stockInicial = r.getStock();
+
+        mvc.perform(post("/api/panel/ordenes/{id}/cerrar", orden.getId())
+                        .header("Authorization", "Bearer " + tokenDe(ADMIN_DELGADO))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                 {
+                                   "diagnostico": "Intento de desbordar la cantidad",
+                                   "precioManoObra": 40.00,
+                                   "repuestos": [
+                                     {"repuestoId": %d, "cantidad": 2147483647},
+                                     {"repuestoId": %d, "cantidad": 2147483647}
+                                   ]
+                                 }
+                                 """.formatted(r.getId(), r.getId())))
+                .andExpect(status().isBadRequest());
+
+        assertThat(repuestos.findById(r.getId()).orElseThrow().getStock()).isEqualTo(stockInicial);
+        assertThat(ordenes.findById(orden.getId()).orElseThrow().getEstado()).isEqualTo(EstadoOrden.EN_PROCESO);
+    }
+
+    @Test
     @DisplayName("Un repuesto de otro taller devuelve 404")
     void repuestoDeOtroTallerDa404() throws Exception {
         OrdenServicio ordenDelgado = fabricarOrden(mypeDelgado(), EstadoOrden.EN_PROCESO);

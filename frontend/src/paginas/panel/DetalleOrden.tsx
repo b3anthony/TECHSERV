@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Icono } from '../../componentes/Icono.tsx'
+import { TarjetaAntecedente } from '../../componentes/garantia/TarjetaAntecedente.tsx'
 import type { IconoNombre } from '../../componentes/Icono.tsx'
 import { focoAmarillo, focoClaro, focoOscuro } from '../../componentes/marco/foco.ts'
 import { Aviso } from '../../componentes/publico/Aviso.tsx'
@@ -16,6 +17,7 @@ import { iso } from './datos.ts'
 import { DialogoAsignacion } from './DialogoAsignacion.tsx'
 import { DialogoCierre } from './DialogoCierre.tsx'
 import { DialogoPago } from './DialogoPago.tsx'
+import { TarjetaDiagnosticoIa } from './TarjetaDiagnosticoIa.tsx'
 
 /** Las etapas que ve el administrador: una por estado real, sin juntar ninguno. */
 const ETAPAS: { titulo: string; icono: IconoNombre }[] = [
@@ -194,7 +196,7 @@ export function DetalleOrden(): JSX.Element {
   const puedeRegistrarPago = orden.total != null && !pagado && pago.isSuccess
   const METODO: Record<MetodoPago, string> = { EFECTIVO: 'en efectivo', YAPE: 'con Yape', PLIN: 'con Plin', TRANSFERENCIA: 'por transferencia' }
   const textoPago = pago.data
-    ? `${pago.data.cobradoPor ? `Cobrado por ${pago.data.cobradoPor}` : 'Pagado'} ${METODO[pago.data.metodo]} el ${formatearMomento(pago.data.pagadoEn)}`
+    ? orden.tipo === 'GARANTIA' && pago.data.monto === 0 ? 'Sin cobro: atención por garantía' : `${pago.data.cobradoPor ? `Cobrado por ${pago.data.cobradoPor}` : 'Pagado'} ${METODO[pago.data.metodo]} el ${formatearMomento(pago.data.pagadoEn)}`
     : pagoRegistrado ? 'Pago registrado' : null
 
   const etapa = ETAPA_DE[orden.estado]
@@ -240,6 +242,7 @@ export function DetalleOrden(): JSX.Element {
             </p>
             <h1 id="titulo-orden" className="mt-2 text-[clamp(1.5rem,1.1rem+1.6vw,2.25rem)] leading-[1.15] font-bold tracking-[-0.025em] first-letter:uppercase">{orden.descripcionFalla}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              {orden.tipo === 'GARANTIA' && <span className="rounded-md border border-publico-acento/40 bg-publico-acento-tenue px-2 py-0.5 text-xs font-bold text-publico-chip-texto">Garantía</span>}
               <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-bold ${orden.estado === 'CANCELADA' ? 'bg-publico-superficie/15 text-publico-superficie' : 'bg-publico-acento text-publico-tinta'}`}>
                 <span aria-hidden="true" className="size-1.5 rounded-2xl bg-current" />{ETIQUETA_ADMIN[orden.estado]}
               </span>
@@ -289,6 +292,7 @@ export function DetalleOrden(): JSX.Element {
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="grid content-start gap-6">
+          {orden.atencionGarantia && <TarjetaAntecedente garantia={orden.atencionGarantia} enlaceOriginal={`/panel/ordenes/${orden.atencionGarantia.ordenOriginalId}`} />}
           {/* Dónde */}
           <TarjetaPanel titulo="Dónde es la visita" icono="pin">
             <p className="font-bold">{orden.direccion}</p>
@@ -331,6 +335,9 @@ export function DetalleOrden(): JSX.Element {
               </>
             )}
           </TarjetaPanel>
+
+          {/* Lo que la IA cree que falla: solo lo ve el taller */}
+          <TarjetaDiagnosticoIa ordenId={orden.id} />
 
           {/* Lo que subió el técnico */}
           {orden.fotosTrabajo && orden.fotosTrabajo.length > 0 && (
@@ -501,11 +508,13 @@ export function DetalleOrden(): JSX.Element {
         <DialogoCierre
           ordenId={orden.id}
           codigoOrden={orden.codigo}
+          garantia={orden.tipo === 'GARANTIA'}
+          repuestosCubiertos={orden.atencionGarantia?.repuestosInstalados ?? []}
           abierto={dialogoCierreAbierto}
           alCerrar={() => setDialogoCierreAbierto(false)}
           alCierreExitoso={() => {
             setDialogoCierreAbierto(false)
-            setAviso('Orden cerrada. Ya puedes registrar el pago.')
+            setAviso('Orden cerrada. El cobro se actualiza en el detalle.')
             void queryClient.invalidateQueries({ queryKey: ['panel'] })
           }}
         />

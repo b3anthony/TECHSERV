@@ -53,6 +53,12 @@ export interface DetallePagoRespuesta {
   cobradoPor?: string
 }
 
+/** Coincide con ServicioPanel.ConteosBandeja: cuántas órdenes de cada etapa cumplen el filtro. */
+export interface ConteosBandeja {
+  total: number
+  porEstado: Record<EstadoOrden, number>
+}
+
 export interface RespuestaPaginada<T> {
   content: T[]
   totalElements: number
@@ -92,6 +98,28 @@ export interface AjustesTaller {
   metodosPago: MetodoPago[]
 }
 
+/** Datos de cobro del taller, separados de sus ajustes generales. */
+export interface DatosCobro {
+  yapeNumero: string | null
+  yapeQr: string | null
+  plinNumero: string | null
+  plinQr: string | null
+  banco: string | null
+  titular: string | null
+  numeroCuenta: string | null
+  cci: string | null
+}
+
+/** Los QR se guardan por separado. Un campo vacío quita el dato. */
+export interface PeticionDatosCobro {
+  yapeNumero: string
+  plinNumero: string
+  banco: string
+  titular: string
+  numeroCuenta: string
+  cci: string
+}
+
 /** Coincide con TecnicoRanking.java */
 export interface TecnicoRanking {
   tecnicoId: number
@@ -109,4 +137,25 @@ export interface ReportePanel {
   calificacionPromedio: number | null
   serviciosCalificados: number
   ranking: TecnicoRanking[]
+}
+
+/** Coincide con DiagnosticoIaVista.java. Solo lo ve el taller. */
+export type EstadoDiagnosticoIa = 'PENDIENTE' | 'LISTO' | 'ERROR' | 'SIN_CONFIGURAR'
+export type ProbabilidadFalla = 'ALTA' | 'MEDIA' | 'BAJA'
+export type FuenteEquipo = 'FOTO' | 'DESCRIPCION' | 'NO_IDENTIFICADO'
+
+export interface DiagnosticoIa {
+  estado: EstadoDiagnosticoIa
+  modelo?: string
+  generadoEn?: string
+  fotosAnalizadas?: number
+  fotosOmitidas?: number
+  error?: string
+  equipo?: { tipo?: string; marca?: string; modelo?: string; fuente: FuenteEquipo }
+  resumen?: string
+  posiblesFallas?: { falla: string; probabilidad: ProbabilidadFalla; explicacion?: string; solucion?: string }[]
+  repuestosInventario?: { repuestoId: number; nombre: string; precio: number; stock: number; motivo?: string }[]
+  otrosRepuestos?: { nombre: string; motivo?: string }[]
+  precauciones?: string[]
+  herramientas?: string[]
 }

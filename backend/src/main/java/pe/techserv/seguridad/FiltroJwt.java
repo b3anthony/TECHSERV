@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 /**
  * Lee la cabecera Authorization, valida el token de sesion y deja al usuario
@@ -47,9 +48,9 @@ public class FiltroJwt extends OncePerRequestFilter {
 
             String token = cabecera.substring(PREFIJO.length()).trim();
             jwt.leerSesion(token)
-               .map(claims -> claims.get("uid", Number.class))
-               .map(Number::longValue)
-               .flatMap(principales::porId)
+               .flatMap(claims -> Optional.ofNullable(claims.get("uid", Number.class))
+                       .flatMap(id -> principales.porSesion(id.longValue(),
+                               claims.get(ServicioJwt.SELLO_CLAVE, Number.class))))
                .ifPresent(usuario -> {
                    var auth = new UsernamePasswordAuthenticationToken(
                            usuario, null, usuario.getAuthorities());

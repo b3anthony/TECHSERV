@@ -58,6 +58,8 @@ export function FotosTrabajo({ token, visita, alSubir }: FotosTrabajoProps): Rea
         <span className="shrink-0 rounded-lg bg-publico-lienzo px-2 py-1 text-xs font-bold text-publico-tinta-media tabular-nums">{visita.fotosTrabajo.length} de {visita.maximoFotosTrabajo}</span>
       </div>
 
+      {visita.repuestos.length > 0 && <p className="mt-3 text-sm text-publico-tinta-media">Sube una foto del repuesto instalado: queda guardada en la garantía del cliente.</p>}
+
       {visita.fotosTrabajo.length > 0 && (
         <ul className="mt-4 grid grid-cols-3 gap-2">
           {visita.fotosTrabajo.map((foto, i) => (

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Icono, SpriteIconos } from '../../componentes/Icono.tsx'
+import { TarjetaAntecedente } from '../../componentes/garantia/TarjetaAntecedente.tsx'
 import type { IconoNombre } from '../../componentes/Icono.tsx'
 import { focoClaro, focoOscuro } from '../../componentes/marco/foco.ts'
 import { AreaTexto } from '../../componentes/publico/AreaTexto.tsx'
@@ -16,6 +17,7 @@ import type { MetodoPago } from '../panel/tiposPanel.ts'
 import { Cobro } from './Cobro.tsx'
 import { FormularioCierre } from './FormularioCierre.tsx'
 import { FotosTrabajo } from './FotosTrabajo.tsx'
+import { GuiaVisita } from './GuiaVisita.tsx'
 import type { VistaVisita } from './tiposVisita.ts'
 
 /** Los cinco hitos del técnico. El índice es el que toca ahora; 5 = todo hecho. */
@@ -83,7 +85,7 @@ export function PaginaVisita(): ReactNode {
   function actualizar(nueva: VistaVisita, paso: string): void {
     queryClient.setQueryData(clave, nueva)
     setError(null)
-    setLogro(LOGRO[paso] ?? null)
+    setLogro(paso === 'terminar' && nueva.garantia && nueva.pago?.monto === 0 ? 'Trabajo cerrado. Sin cobro: atención por garantía.' : LOGRO[paso] ?? null)
     window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }
 
@@ -148,6 +150,7 @@ export function PaginaVisita(): ReactNode {
   const esDiaRelativo = ['hoy', 'mañana', 'ayer'].includes(dia)
   const punto = coordenadas(v.urlMapa)
   const trabajando = v.estado === 'EN_PROCESO' || v.estado === 'COMPLETADA' || v.estado === 'CALIFICADA'
+  const sinCobroGarantia = v.garantia != null && v.pago?.monto === 0
 
   const botonPaso = (texto: string, icono: IconoNombre, paso: 'confirmar' | 'en-camino' | 'llegue') => (
     <Boton type="button" onClick={() => void avanzar(paso)} cargando={avanzando === paso} className="min-h-14 w-full text-base">
@@ -236,7 +239,7 @@ export function PaginaVisita(): ReactNode {
           ) : v.estado === 'ASIGNADA' ? (
             <>
               <h2 className="text-xl font-bold">¿Puedes ir?</h2>
-              <p className="mt-1 mb-4 text-sm text-publico-tinta-media">Revisa abajo la dirección y lo que contó el cliente, y confirma la visita.</p>
+              <p className="mt-1 mb-4 text-sm text-publico-tinta-media">Revisa abajo lo que contó el cliente y la dirección, y confirma la visita.</p>
               {botonPaso('Confirmar visita', 'check', 'confirmar')}
               <CancelarVisita token={token} deshabilitado={avanzando !== null} alCancelar={() => setRechazada(true)} />
             </>
@@ -260,12 +263,12 @@ export function PaginaVisita(): ReactNode {
           ) : hito === 3 ? (
             <FormularioCierre token={token} visita={v} alTerminar={(n) => actualizar(n, 'terminar')} />
           ) : hito === 4 && v.total != null ? (
-            <Cobro token={token} total={v.total} aceptados={v.metodosPago} elegidoPorCliente={v.metodoPagoCliente} alCobrar={(n) => actualizar(n, 'cobro')} />
+            <Cobro token={token} total={v.total} aceptados={v.metodosPago} elegidoPorCliente={v.metodoPagoCliente} tallerNombre={v.tallerNombre} datosCobro={v.datosCobro} alCobrar={(n) => actualizar(n, 'cobro')} />
           ) : (
             <div className="grid justify-items-center py-2 text-center">
               <span className="grid size-16 place-items-center rounded-2xl bg-publico-completada text-publico-superficie motion-safe:animate-[visita-sello_500ms_ease-out]"><Icono nombre="visto" className="size-8" /></span>
-              <h2 className="mt-4 text-xl font-bold">{v.pago?.cobradoPor ? `Cobraste ${soles(v.pago.monto)}` : `El taller registró el cobro de ${soles(v.pago?.monto ?? v.total)}`}</h2>
-              {v.pago && <p className="mt-1 text-sm text-publico-tinta-media">{METODO[v.pago.metodo][0].toUpperCase() + METODO[v.pago.metodo].slice(1)}, el {formatearMomento(v.pago.pagadoEn)}.</p>}
+              <h2 className="mt-4 text-xl font-bold">{sinCobroGarantia ? 'Sin cobro: atención por garantía' : v.pago?.cobradoPor ? `Cobraste ${soles(v.pago.monto)}` : `El taller registró el cobro de ${soles(v.pago?.monto ?? v.total)}`}</h2>
+              {v.pago && !sinCobroGarantia && <p className="mt-1 text-sm text-publico-tinta-media">{METODO[v.pago.metodo][0].toUpperCase() + METODO[v.pago.metodo].slice(1)}, el {formatearMomento(v.pago.pagadoEn)}.</p>}
               <p className="mt-3 max-w-xs text-sm text-publico-tinta-media">No queda nada pendiente. Si puedes, sube fotos del trabajo terminado.</p>
             </div>
           )}
@@ -287,8 +290,26 @@ export function PaginaVisita(): ReactNode {
           </Tarjeta>
         )}
 
-        {/* Dónde, quién y qué pasa: hacen falta para ir y para empezar. Una vez
-            dentro del domicilio (Terminado, Cobrado) ya no, y solo alargan la página. */}
+        {/* ─── La falla ─── */}
+        {(hito < 3 || (v.garantia && hito < 4)) && (
+        <Tarjeta titulo="Lo que contó el cliente" icono="documento">
+          <blockquote className="rounded-xl border-l-4 border-publico-acento bg-publico-lienzo px-4 py-3 text-base/[1.55] first-letter:uppercase">{v.descripcionFalla}</blockquote>
+          {v.fotosCliente.length > 0 && (
+            <ul className="mt-4 grid grid-cols-3 gap-2">
+              {v.fotosCliente.map((foto, i) => (
+                <li key={foto}>
+                  <a href={foto} target="_blank" rel="noopener noreferrer" className={`block aspect-square overflow-hidden rounded-xl border border-publico-linea bg-publico-superficie-suave ${focoClaro}`}>
+                    <img src={foto} alt={`Foto ${i + 1} que envió el cliente`} className="size-full object-cover" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Tarjeta>
+        )}
+
+        {v.garantia && !cancelada && hito < 4 && <TarjetaAntecedente garantia={v.garantia} titulo="Atención por garantía · sin cobro de visita" />}
+
         {hito < 3 && <>
         {/* ─── Dónde ─── */}
         <Tarjeta titulo="Dónde es" icono="pin">
@@ -320,21 +341,8 @@ export function PaginaVisita(): ReactNode {
           )}
         </Tarjeta>
 
-        {/* ─── La falla ─── */}
-        <Tarjeta titulo="Lo que contó el cliente" icono="documento">
-          <blockquote className="rounded-xl border-l-4 border-publico-acento bg-publico-lienzo px-4 py-3 text-base/[1.55] first-letter:uppercase">{v.descripcionFalla}</blockquote>
-          {v.fotosCliente.length > 0 && (
-            <ul className="mt-4 grid grid-cols-3 gap-2">
-              {v.fotosCliente.map((foto, i) => (
-                <li key={foto}>
-                  <a href={foto} target="_blank" rel="noopener noreferrer" className={`block aspect-square overflow-hidden rounded-xl border border-publico-linea bg-publico-superficie-suave ${focoClaro}`}>
-                    <img src={foto} alt={`Foto ${i + 1} que envió el cliente`} className="size-full object-cover" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Tarjeta>
+        {/* ─── Al final, lo que sugiere la IA: qué llevar y qué revisar ─── */}
+        {v.guiaIa && !cancelada && <GuiaVisita guia={v.guiaIa} codigo={v.codigo} />}
         </>}
 
         <p className="flex items-start gap-2 px-1 text-xs text-publico-tinta-suave">

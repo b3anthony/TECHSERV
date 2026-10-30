@@ -24,6 +24,8 @@ import pe.techserv.panel.dto.CierreOrden;
 import pe.techserv.panel.dto.DetallePago;
 import pe.techserv.panel.dto.RegistroPago;
 import pe.techserv.panel.dto.RepuestoUsado;
+import pe.techserv.garantia.ServicioGarantia;
+import pe.techserv.orden.TipoOrden;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -44,15 +46,17 @@ public class ServicioCierre {
     private final RepuestoRepository repuestos;
     private final OrdenHistorialRepository historial;
     private final PagoRepository pagos;
+    private final ServicioGarantia garantias;
 
     public ServicioCierre(OrdenServicioRepository ordenes,
                           RepuestoRepository repuestos,
                           OrdenHistorialRepository historial,
-                          PagoRepository pagos) {
+                          PagoRepository pagos, ServicioGarantia garantias) {
         this.ordenes = ordenes;
         this.repuestos = repuestos;
         this.historial = historial;
         this.pagos = pagos;
+        this.garantias = garantias;
     }
 
     @Transactional
@@ -78,7 +82,7 @@ public class ServicioCierre {
 
         anotar(orden, anterior, EstadoOrden.EN_PROCESO, actor, nota);
 
-        return OrdenDetalle.de(orden);
+        return garantias.detalleTaller(orden);
     }
 
     @Transactional
@@ -100,13 +104,25 @@ public class ServicioCierre {
                     + " no se puede cerrar");
         }
 
+        boolean porGarantia = orden.getTipo() == TipoOrden.GARANTIA;
+        if (porGarantia && peticion.precioManoObra().signum() > 0) {
+            throw new SolicitudInvalida("Una atención por garantía no cobra mano de obra");
+        }
+        Map<Long, Integer> cubiertos = garantias.cantidadesCubiertas(orden);
+
         Map<Long, Integer> repuestosAgrupados = new LinkedHashMap<>();
         if (peticion.repuestos() != null) {
             for (RepuestoUsado item : peticion.repuestos()) {
                 if (item.cantidad() == null || item.cantidad() < 1) {
                     throw new SolicitudInvalida("La cantidad de repuesto debe ser mayor o igual a 1");
                 }
-                repuestosAgrupados.merge(item.repuestoId(), item.cantidad(), Integer::sum);
+                // addExact: dos líneas del mismo repuesto con cantidades enormes no
+                // pueden dar la vuelta a negativo (y SUMAR stock en vez de restarlo).
+                try {
+                    repuestosAgrupados.merge(item.repuestoId(), item.cantidad(), Math::addExact);
+                } catch (ArithmeticException e) {
+                    throw new SolicitudInvalida("La cantidad de repuesto es demasiado grande");
+                }
             }
         }
 
@@ -126,17 +142,18 @@ public class ServicioCierre {
                 throw new ConflictoEstado("No hay stock suficiente de " + repuesto.getNombre());
             }
 
-            OrdenRepuesto linea = new OrdenRepuesto();
-            linea.setOrden(orden);
-            linea.setRepuesto(repuesto);
-            linea.setCantidad(cantidad);
-            linea.setPrecioUnitario(repuesto.getPrecio());
-            orden.getRepuestos().add(linea);
+            int gratis = Math.min(cantidad, cubiertos.getOrDefault(repuestoId, 0));
+            if (gratis > 0) {
+                agregarRepuesto(orden, repuesto, gratis, BigDecimal.ZERO);
+            }
+            if (cantidad > gratis) {
+                OrdenRepuesto linea = agregarRepuesto(orden, repuesto, cantidad - gratis, repuesto.getPrecio());
+                totalRepuestos = totalRepuestos.add(linea.subtotal());
+            }
 
             repuesto.setStock(repuesto.getStock() - cantidad);
             repuestos.save(repuesto);
 
-            totalRepuestos = totalRepuestos.add(linea.subtotal());
         }
 
         BigDecimal total = peticion.precioManoObra().add(totalRepuestos);
@@ -152,7 +169,28 @@ public class ServicioCierre {
             ordenes.save(orden);
         }
 
-        return OrdenDetalle.de(orden);
+        garantias.sellar(orden);
+        if (porGarantia && total.signum() == 0) {
+            Pago pago = new Pago();
+            pago.setOrden(orden);
+            pago.setMonto(BigDecimal.ZERO);
+            pago.setMetodo(orden.getMetodoPago() == null ? MetodoPago.EFECTIVO : orden.getMetodoPago());
+            pago.setEstado(EstadoPago.PAGADO);
+            pago.setPagadoEn(OffsetDateTime.now());
+            pagos.save(pago);
+        }
+        return garantias.detalleTaller(orden);
+    }
+
+    private static OrdenRepuesto agregarRepuesto(OrdenServicio orden, Repuesto repuesto, int cantidad,
+                                                 BigDecimal precio) {
+        OrdenRepuesto linea = new OrdenRepuesto();
+        linea.setOrden(orden);
+        linea.setRepuesto(repuesto);
+        linea.setCantidad(cantidad);
+        linea.setPrecioUnitario(precio);
+        orden.getRepuestos().add(linea);
+        return linea;
     }
 
     /**

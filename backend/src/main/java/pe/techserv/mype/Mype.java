@@ -52,6 +52,9 @@ public class Mype {
     @Column(nullable = false)
     private boolean activo = true;
 
+    @Column(name = "garantia_dias", nullable = false)
+    private int garantiaDias = 30;
+
     @Column(name = "creado_en", nullable = false)
     private OffsetDateTime creadoEn = OffsetDateTime.now();
 
@@ -99,6 +102,8 @@ public class Mype {
     public void setLongitud(BigDecimal longitud) { this.longitud = longitud; }
     public boolean isActivo() { return activo; }
     public void setActivo(boolean activo) { this.activo = activo; }
+    public int getGarantiaDias() { return garantiaDias; }
+    public void setGarantiaDias(int garantiaDias) { this.garantiaDias = garantiaDias; }
     public OffsetDateTime getCreadoEn() { return creadoEn; }
     public void setCreadoEn(OffsetDateTime creadoEn) { this.creadoEn = creadoEn; }
     public List<MypeEspecialidad> getEspecialidades() { return especialidades; }

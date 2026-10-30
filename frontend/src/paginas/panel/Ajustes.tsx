@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { api, mensajeDeError } from '../../api/cliente.ts'
 import { Icono } from '../../componentes/Icono.tsx'
@@ -16,7 +16,10 @@ import { useSesion } from '../../sesion/SesionProvider.tsx'
 import { CabeceraPagina, EsqueletoLista, ErrorCarga, TarjetaPanel } from './comun.tsx'
 import { ICONO_ESPECIALIDAD, METODOS_PAGO, contenedorPanel, enlaceSuave, soles } from './formato.ts'
 import { useAjustes } from './datos.ts'
+import { TarjetaDatosCobro } from './TarjetaDatosCobro.tsx'
 import type { AjustesTaller, MetodoPago } from './tiposPanel.ts'
+import { TarjetaGarantia } from './TarjetaGarantia.tsx'
+import type { ConfirmacionCuentaEliminada } from '../CuentaEliminada.tsx'
 
 /** Lo que hay que escribir para cerrar la cuenta. Igual que en el servidor. */
 const PALABRA_CONFIRMACION = 'ELIMINAR'
@@ -36,12 +39,14 @@ export function Ajustes(): ReactNode {
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <SeccionCuenta datos={ajustes.data} />
           <SeccionNegocio datos={ajustes.data} />
+          <TarjetaGarantia />
           <SeccionHorario datos={ajustes.data} />
           <div className="grid gap-6">
             <SeccionMetodosPago datos={ajustes.data} />
+            <TarjetaDatosCobro aceptados={ajustes.data.metodosPago} />
             <SeccionClave />
           </div>
-          <SeccionEliminar razonSocial={ajustes.data.negocio.razonSocial} />
+          <SeccionEliminar razonSocial={ajustes.data.negocio.razonSocial} email={ajustes.data.cuenta.email} />
         </div>
       )}
     </div>
@@ -303,8 +308,9 @@ function SeccionClave(): ReactNode {
 
 /* ─── Eliminar cuenta ─── */
 
-function SeccionEliminar({ razonSocial }: { razonSocial: string }): ReactNode {
-  const { salir } = useSesion()
+function SeccionEliminar({ razonSocial, email }: { razonSocial: string; email: string }): ReactNode {
+  const navigate = useNavigate()
+  const { olvidarSesion } = useSesion()
   const { enviando, mensaje, errores, enviar } = useEnvio()
   const [abierto, setAbierto] = useState(false)
   const [clave, setClave] = useState('')
@@ -318,8 +324,15 @@ function SeccionEliminar({ razonSocial }: { razonSocial: string }): ReactNode {
     const ok = await enviar(async () => {
       await api.post('/panel/ajustes/eliminar-cuenta', { clave, confirmacion: confirmacion.trim() })
     }, 'Tu cuenta quedó cerrada.')
-    // La sesión ya no vale en el servidor: se borra también aquí y se sale.
-    if (ok) salir()
+    if (!ok) return
+    // La ruta y la sesión cambian juntas para que RutaProtegida no redirija a /entrar.
+    startTransition(() => {
+      navigate('/cuenta-eliminada', {
+        replace: true,
+        state: { tipo: 'administrador', email } satisfies ConfirmacionCuentaEliminada,
+      })
+      olvidarSesion()
+    })
   }
 
   function cancelar(): void {

@@ -216,8 +216,8 @@ class CuentaClienteTest extends BasePruebaIntegracion {
 
         Long idVencido = clienteDe(vencido).getId();
         Long idReciente = clienteDe(reciente).getId();
-        jdbc.update("UPDATE cliente SET desactivada_en = now() - interval '31 days' WHERE id = ?", idVencido);
-        jdbc.update("UPDATE cliente SET desactivada_en = now() - interval '10 days' WHERE id = ?", idReciente);
+        jdbc.update("UPDATE cliente SET desactivada_en = NOW(6) - INTERVAL 31 DAY WHERE id = ?", idVencido);
+        jdbc.update("UPDATE cliente SET desactivada_en = NOW(6) - INTERVAL 10 DAY WHERE id = ?", idReciente);
 
         // Aunque la limpieza de esta noche aún no haya pasado, el plazo venció.
         login(vencido.email(), CLAVE)

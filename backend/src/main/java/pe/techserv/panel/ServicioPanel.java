@@ -1,5 +1,7 @@
 package pe.techserv.panel;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -22,7 +24,9 @@ import pe.techserv.orden.dto.OrdenDetalle;
 import pe.techserv.orden.dto.OrdenResumen;
 import pe.techserv.panel.dto.TecnicoDisponible;
 import pe.techserv.visita.ServicioEnlaces;
+import pe.techserv.garantia.ServicioGarantia;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,27 +51,67 @@ public class ServicioPanel {
     private final OrdenHistorialRepository historial;
     private final Optional<AvisoTecnico> avisos;
     private final ServicioEnlaces enlaces;
+    private final ServicioGarantia garantias;
+
+    @PersistenceContext
+    private EntityManager em;
 
     public ServicioPanel(OrdenServicioRepository ordenes,
                          TecnicoRepository tecnicos,
                          OrdenHistorialRepository historial,
                          Optional<AvisoTecnico> avisos,
-                         ServicioEnlaces enlaces) {
+                         ServicioEnlaces enlaces, ServicioGarantia garantias) {
         this.ordenes = ordenes;
         this.tecnicos = tecnicos;
         this.historial = historial;
         this.avisos = avisos;
         this.enlaces = enlaces;
+        this.garantias = garantias;
     }
 
     @Transactional(readOnly = true)
-    public Page<OrdenResumen> bandeja(Long mypeId, EstadoOrden estado, int pagina, int tamano) {
-        var peticion = PageRequest.of(pagina, tamano);
-        var resultado = (estado == null)
-                ? ordenes.findByMypeIdOrderByFechaProgramadaDescHoraProgramadaDesc(mypeId, peticion)
-                : ordenes.findByMypeIdAndEstadoOrderByFechaProgramadaDescHoraProgramadaDesc(
-                        mypeId, estado, peticion);
-        return resultado.map(OrdenResumen::paraTaller);
+    public Page<OrdenResumen> bandeja(Long mypeId, EstadoOrden estado, BusquedaOrdenes.Filtro filtro,
+                                      int pagina, int tamano) {
+        exigirTecnicoDelTaller(mypeId, filtro);
+        var peticion = PageRequest.of(pagina, tamano, BusquedaOrdenes.orden(filtro.orden()));
+        return ordenes.findAll(BusquedaOrdenes.filtrar(mypeId, filtro, estado), peticion)
+                      .map(OrdenResumen::paraTaller);
+    }
+
+    /**
+     * Cuántas órdenes de cada etapa cumplen el filtro: los números de las
+     * pestañas. Sale del MISMO predicado que la lista, agrupado por estado.
+     */
+    @Transactional(readOnly = true)
+    public ConteosBandeja conteos(Long mypeId, BusquedaOrdenes.Filtro filtro) {
+        exigirTecnicoDelTaller(mypeId, filtro);
+        var cb = em.getCriteriaBuilder();
+        var consulta = cb.createQuery(Object[].class);
+        var raiz = consulta.from(OrdenServicio.class);
+        consulta.multiselect(raiz.get("estado"), cb.count(raiz))
+                .where(BusquedaOrdenes.filtrar(mypeId, filtro, null).toPredicate(raiz, consulta, cb))
+                .groupBy(raiz.get("estado"));
+
+        Map<EstadoOrden, Long> porEstado = new EnumMap<>(EstadoOrden.class);
+        for (EstadoOrden e : EstadoOrden.values()) {
+            porEstado.put(e, 0L);
+        }
+        long total = 0;
+        for (Object[] fila : em.createQuery(consulta).getResultList()) {
+            long n = (Long) fila[1];
+            porEstado.put((EstadoOrden) fila[0], n);
+            total += n;
+        }
+        return new ConteosBandeja(total, porEstado);
+    }
+
+    public record ConteosBandeja(long total, Map<EstadoOrden, Long> porEstado) {}
+
+    /** Filtrar por un técnico de otro taller responde como si no existiera. */
+    private void exigirTecnicoDelTaller(Long mypeId, BusquedaOrdenes.Filtro filtro) {
+        if (filtro.tecnicoId() != null && tecnicos.findByIdAndMypeId(filtro.tecnicoId(), mypeId).isEmpty()) {
+            throw new RecursoNoEncontrado("No se encontró el técnico " + filtro.tecnicoId());
+        }
     }
 
     /**
@@ -77,7 +121,7 @@ public class ServicioPanel {
     @Transactional(readOnly = true)
     public OrdenDetalle detalle(Long mypeId, Long ordenId) {
         return ordenes.findByIdAndMypeId(ordenId, mypeId)
-                      .map(OrdenDetalle::de)
+                      .map(garantias::detalleTaller)
                       .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
     }
 
@@ -145,7 +189,7 @@ public class ServicioPanel {
             }
         });
 
-        return OrdenDetalle.de(orden);
+        return garantias.detalleTaller(orden);
     }
 
     /**

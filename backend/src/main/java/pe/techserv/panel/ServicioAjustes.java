@@ -1,5 +1,6 @@
 package pe.techserv.panel;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,12 +8,14 @@ import pe.techserv.comun.ConflictoEstado;
 import pe.techserv.comun.RecursoNoEncontrado;
 import pe.techserv.comun.SolicitudInvalida;
 import pe.techserv.mype.*;
+import pe.techserv.notificacion.AvisoCuenta;
 import pe.techserv.orden.*;
 import pe.techserv.panel.dto.*;
 import pe.techserv.seguridad.UsuarioAutenticado;
 import pe.techserv.usuario.Usuario;
 import pe.techserv.usuario.UsuarioRepository;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -42,12 +45,13 @@ public class ServicioAjustes {
     private final OrdenServicioRepository ordenes;
     private final OrdenHistorialRepository historial;
     private final PasswordEncoder claves;
+    private final ApplicationEventPublisher avisos;
 
     public ServicioAjustes(UsuarioRepository usuarios, MypeRepository mypes,
                            MypeEspecialidadRepository especialidades,
                            AdministradorRepository administradores, TecnicoRepository tecnicos,
                            OrdenServicioRepository ordenes, OrdenHistorialRepository historial,
-                           PasswordEncoder claves) {
+                           PasswordEncoder claves, ApplicationEventPublisher avisos) {
         this.usuarios = usuarios;
         this.mypes = mypes;
         this.especialidades = especialidades;
@@ -56,6 +60,7 @@ public class ServicioAjustes {
         this.ordenes = ordenes;
         this.historial = historial;
         this.claves = claves;
+        this.avisos = avisos;
     }
 
     @Transactional(readOnly = true)
@@ -171,6 +176,7 @@ public class ServicioAjustes {
         // Cada orden se bloquea y se relee antes de decidir: el técnico puede
         // estar pulsando "Voy en camino" en este mismo instante.
         List<String> enCurso = new ArrayList<>();
+        int canceladas = 0;
         for (Long id : ordenes.idsPorEstado(mypeId, abiertas)) {
             OrdenServicio orden = ordenes.bloquear(id, mypeId).orElseThrow();
             if (EN_CURSO.contains(orden.getEstado())) {
@@ -179,6 +185,7 @@ public class ServicioAjustes {
                 EstadoOrden anterior = orden.getEstado();
                 orden.setEstado(EstadoOrden.CANCELADA);
                 anotar(orden, anterior, admin);
+                canceladas++;
             }
         }
         if (!enCurso.isEmpty()) {
@@ -187,6 +194,8 @@ public class ServicioAjustes {
                     + "). Espera a que terminen para cerrar la cuenta");
         }
 
+        avisos.publishEvent(new AvisoCuenta.TallerEliminado(admin.getEmail(), admin.getNombreCompleto(),
+                taller.getRazonSocial(), OffsetDateTime.now(), canceladas));
         taller.setActivo(false);
         for (Tecnico t : tecnicos.findByMypeIdOrderByIdAsc(mypeId)) {
             t.setDisponible(false);

@@ -1,5 +1,8 @@
 package pe.techserv.reserva;
 
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,6 +11,11 @@ import pe.techserv.catalogo.ServicioCatalogo;
 import pe.techserv.comun.ConflictoEstado;
 import pe.techserv.comun.RecursoNoEncontrado;
 import pe.techserv.comun.SolicitudInvalida;
+import pe.techserv.diagnostico.FotosAdjuntadas;
+import pe.techserv.garantia.Garantia;
+import pe.techserv.garantia.GarantiaRepository;
+import pe.techserv.garantia.ServicioGarantia;
+import pe.techserv.garantia.dto.NuevaAtencionGarantia;
 import pe.techserv.mype.Mype;
 import pe.techserv.mype.MypeEspecialidadRepository;
 import pe.techserv.mype.MypeRepository;
@@ -22,6 +30,10 @@ import pe.techserv.usuario.Cliente;
 import pe.techserv.usuario.ClienteRepository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,12 +50,19 @@ public class ServicioReserva {
     private final MypeEspecialidadRepository especialidades;
     private final ServicioCatalogo catalogo;
     private final ServicioAlmacenamiento almacen;
+    private final ApplicationEventPublisher eventos;
+    private final ValidadorAgenda agenda;
+    private final GarantiaRepository garantias;
+    private final ServicioGarantia cobertura;
 
     public ServicioReserva(OrdenServicioRepository ordenes, OrdenFotoRepository fotos,
                            OrdenHistorialRepository historial, CalificacionRepository calificaciones,
                            ClienteRepository clientes, MypeRepository mypes,
                            MypeEspecialidadRepository especialidades,
-                           ServicioCatalogo catalogo, ServicioAlmacenamiento almacen) {
+                           ServicioCatalogo catalogo, ServicioAlmacenamiento almacen,
+                           ApplicationEventPublisher eventos, ValidadorAgenda agenda,
+                           GarantiaRepository garantias, ServicioGarantia cobertura) {
+        this.eventos = eventos;
         this.ordenes = ordenes;
         this.fotos = fotos;
         this.historial = historial;
@@ -53,6 +72,9 @@ public class ServicioReserva {
         this.especialidades = especialidades;
         this.catalogo = catalogo;
         this.almacen = almacen;
+        this.agenda = agenda;
+        this.garantias = garantias;
+        this.cobertura = cobertura;
     }
 
     @Transactional
@@ -75,21 +97,7 @@ public class ServicioReserva {
                     + datos.metodoPago().getEtiqueta());
         }
 
-        if (!ServicioCatalogo.FRANJAS.contains(datos.hora())) {
-            throw new SolicitudInvalida("Esa hora no es una franja de atención");
-        }
-
-        if (!taller.atiende(datos.fecha().getDayOfWeek(), datos.hora())) {
-            throw new SolicitudInvalida("El taller no atiende ese día a esa hora");
-        }
-
-        // El cupo se vuelve a comprobar AQUI, no solo al pintar la agenda: entre
-        // que el cliente vio las horas libres y pulsó "Confirmar" pudo entrar
-        // otra reserva.
-        if (!catalogo.hayCupo(taller.getId(), datos.fecha(), datos.hora())) {
-            throw new ConflictoEstado(
-                    "Esa hora acaba de ocuparse. Elige otra franja, por favor.");
-        }
+        agenda.validar(taller, datos.fecha(), datos.hora());
 
         OrdenServicio orden = new OrdenServicio();
         orden.setCodigo(siguienteCodigo());
@@ -113,7 +121,74 @@ public class ServicioReserva {
         anotar(orden, null, EstadoOrden.PENDIENTE, ActorHistorial.CLIENTE,
                "El cliente registró la solicitud");
 
-        return OrdenDetalle.paraCliente(orden);
+        return cobertura.detalleCliente(orden);
+    }
+
+    @Transactional
+    public OrdenDetalle reclamarGarantia(Long clienteId, Long ordenId, NuevaAtencionGarantia datos) {
+        OrdenServicio original = ordenes.findByIdAndClienteId(ordenId, clienteId)
+                .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
+        if (original.getTipo() != TipoOrden.NORMAL) {
+            throw new ConflictoEstado("Solicita la garantía desde la reparación original");
+        }
+        if (original.getEstado() != EstadoOrden.COMPLETADA && original.getEstado() != EstadoOrden.CALIFICADA) {
+            throw new ConflictoEstado("Solo puedes solicitar garantía de una reparación completada");
+        }
+        Garantia garantia = garantias.findByOrdenIdAndMypeId(ordenId, original.getMype().getId())
+                .orElseThrow(() -> new ConflictoEstado("Esta reparación no tiene una garantía emitida"));
+        if (!OffsetDateTime.now().isBefore(garantia.getVenceEn())) {
+            String fecha = garantia.getVenceEn().atZoneSameInstant(ZoneId.of("America/Lima"))
+                    .format(DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-PE")));
+            throw new ConflictoEstado("La garantía de " + original.getCodigo() + " venció el " + fecha);
+        }
+        if (ordenes.atencionGarantiaAbierta(ordenId, original.getMype().getId(), clienteId,
+                ServicioGarantia.CERRADAS).isPresent()) {
+            throw garantiaYaSolicitada(original);
+        }
+        Mype taller = original.getMype();
+        if (!taller.isActivo()) {
+            throw new ConflictoEstado("El taller ya no está activo para atender esta garantía");
+        }
+        agenda.validar(taller, datos.fecha(), datos.hora());
+
+        OrdenServicio orden = new OrdenServicio();
+        orden.setCodigo(siguienteCodigo());
+        orden.setTipo(TipoOrden.GARANTIA);
+        orden.setGarantiaDe(original);
+        orden.setCliente(original.getCliente());
+        orden.setMype(taller);
+        orden.setEspecialidad(original.getEspecialidad());
+        orden.setDescripcionFalla(datos.descripcionFalla().trim());
+        orden.setDireccion(original.getDireccion());
+        orden.setReferencia(original.getReferencia());
+        orden.setDistrito(original.getDistrito());
+        orden.setLatitud(original.getLatitud());
+        orden.setLongitud(original.getLongitud());
+        orden.setMetodoPago(original.getMetodoPago());
+        orden.setFechaProgramada(datos.fecha());
+        orden.setHoraProgramada(datos.hora());
+        orden.setEstado(EstadoOrden.PENDIENTE);
+        try {
+            // El índice único de V10 decide si dos clics pasaron juntos la comprobación anterior.
+            ordenes.saveAndFlush(orden);
+        } catch (DataIntegrityViolationException e) {
+            for (Throwable causa = e; causa != null; causa = causa.getCause()) {
+                // MySQL lo nombra con la tabla delante: orden_servicio.idx_orden_garantia_abierta
+                if (causa instanceof ConstraintViolationException violacion
+                        && violacion.getConstraintName() != null
+                        && violacion.getConstraintName().endsWith("idx_orden_garantia_abierta")) {
+                    throw garantiaYaSolicitada(original);
+                }
+            }
+            throw e;
+        }
+        anotar(orden, null, EstadoOrden.PENDIENTE, ActorHistorial.CLIENTE,
+                "Atención por garantía de " + original.getCodigo());
+        return cobertura.detalleCliente(orden);
+    }
+
+    private static ConflictoEstado garantiaYaSolicitada(OrdenServicio original) {
+        return new ConflictoEstado("Ya hay una atención por garantía abierta para " + original.getCodigo());
     }
 
     @Transactional
@@ -143,20 +218,23 @@ public class ServicioReserva {
             orden.getFotos().add(foto);
         }
 
-        return OrdenDetalle.paraCliente(orden);
+        // El diagnostico de la IA se lanza despues del commit (lo ve solo el taller).
+        eventos.publishEvent(new FotosAdjuntadas(orden.getId()));
+
+        return cobertura.detalleCliente(orden);
     }
 
     @Transactional(readOnly = true)
     public List<OrdenResumen> misOrdenes(Long clienteId) {
         return ordenes.findByClienteIdOrderByCreadaEnDesc(clienteId).stream()
-                .map(OrdenResumen::de)
+                .map(o -> OrdenResumen.de(o, cobertura.resumenCliente(o)))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public OrdenDetalle miOrden(Long clienteId, Long ordenId) {
         return ordenes.findByIdAndClienteId(ordenId, clienteId)
-                .map(OrdenDetalle::paraCliente)
+                .map(cobertura::detalleCliente)
                 .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
     }
 
@@ -191,7 +269,8 @@ public class ServicioReserva {
                 .orElseThrow(() -> RecursoNoEncontrado.orden(ordenId));
 
         boolean tieneCalificacion = calificaciones.existsByOrdenId(orden.getId());
-        return Seguimiento.de(orden, tieneCalificacion);
+        return Seguimiento.de(orden, tieneCalificacion, cobertura.resumenCliente(orden),
+                cobertura.antecedenteCliente(orden));
     }
 
     @Transactional
@@ -225,7 +304,7 @@ public class ServicioReserva {
         anotar(orden, anterior, EstadoOrden.CALIFICADA, ActorHistorial.CLIENTE,
                "El cliente calificó el servicio con " + datos.puntaje() + " de 5");
 
-        return Seguimiento.de(orden, true);
+        return Seguimiento.de(orden, true, cobertura.resumenCliente(orden), cobertura.antecedenteCliente(orden));
     }
 
     @Transactional(readOnly = true)

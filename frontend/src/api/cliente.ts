@@ -55,7 +55,13 @@ api.interceptors.response.use(
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       borrarSesion()
-      window.location.assign('/entrar')
+      // La comprobación de la sesión al arrancar no saca a nadie de donde está:
+      // un enlace para restablecer la contraseña abierto con una sesión vieja
+      // guardada tiene que seguir en su página. Las rutas privadas ya mandan a
+      // /entrar por su cuenta (RutaProtegida) al quedarse sin usuario.
+      if (error.config?.url !== '/auth/yo') {
+        window.location.assign('/entrar')
+      }
     }
     return Promise.reject(error)
   },

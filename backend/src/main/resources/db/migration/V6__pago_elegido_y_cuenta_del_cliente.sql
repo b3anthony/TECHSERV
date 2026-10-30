@@ -17,8 +17,9 @@ ALTER TABLE orden_servicio
 -- eliminada_en: cuándo se borraron sus datos personales. Las órdenes se quedan
 -- (son también el historial del taller), pero ya no dicen quién las pidió.
 ALTER TABLE cliente
-    ADD COLUMN desactivada_en TIMESTAMPTZ,
-    ADD COLUMN eliminada_en   TIMESTAMPTZ;
+    ADD COLUMN desactivada_en DATETIME(6),
+    ADD COLUMN eliminada_en   DATETIME(6);
 
-CREATE INDEX idx_cliente_desactivada ON cliente (desactivada_en)
-    WHERE desactivada_en IS NOT NULL AND eliminada_en IS NULL;
+-- MySQL no tiene índices parciales: el índice cubre todas las filas, y las
+-- que buscan las cuentas por eliminar filtran por las dos columnas.
+CREATE INDEX idx_cliente_desactivada ON cliente (desactivada_en, eliminada_en);

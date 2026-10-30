@@ -46,6 +46,18 @@ export const EXPLICACION_ADMIN: Record<EstadoOrden, string> = {
 
 /* ─── Especialidades ─── */
 
+/** Los colores de cada etapa: la ficha y su punto. Los comparten la ficha, las pestañas y la bandeja. */
+export const TONO_ESTADO: Record<EstadoOrden, { chip: string; punto: string }> = {
+  PENDIENTE: { chip: 'border-publico-acento-hondo bg-publico-acento text-publico-tinta', punto: 'bg-publico-tinta' },
+  ASIGNADA: { chip: 'border-publico-acento-hondo/40 bg-publico-acento-tenue text-publico-chip-texto', punto: 'bg-publico-acento-hondo' },
+  CONFIRMADA: { chip: 'border-publico-acento-hondo/40 bg-publico-acento-tenue text-publico-chip-texto', punto: 'bg-publico-acento-hondo' },
+  EN_CAMINO: { chip: 'border-publico-panel bg-publico-panel text-publico-superficie', punto: 'bg-publico-acento' },
+  EN_PROCESO: { chip: 'border-publico-panel bg-publico-panel text-publico-superficie', punto: 'bg-publico-acento' },
+  COMPLETADA: { chip: 'border-publico-completada/40 bg-publico-superficie text-publico-completada', punto: 'bg-publico-completada' },
+  CALIFICADA: { chip: 'border-publico-completada/30 bg-publico-superficie text-publico-completada', punto: 'bg-publico-completada' },
+  CANCELADA: { chip: 'border-publico-linea bg-publico-superficie-suave text-publico-tinta-media', punto: 'bg-publico-tinta-suave' },
+}
+
 export const ESPECIALIDAD_CORTA: Record<Especialidad, string> = {
   SERVICIOS_HOGAR: 'Hogar',
   SOPORTE_INFORMATICO: 'Informática',
